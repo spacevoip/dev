@@ -1,56 +1,58 @@
-# InovaVoip App
+# PABX Dashboard
 
-Painel de controle para gerenciamento de chamadas VoIP.
+## Deploy no Render
 
-## Requisitos
+### 1. Preparação
 
-- Node.js 18 ou superior
-- npm 8 ou superior
+1. Crie uma conta no [Render](https://render.com)
+2. Conecte seu repositório GitHub
+3. Clique em "New +" e escolha "Web Service"
 
-## Instalação
+### 2. Configuração
 
-1. Clone o repositório:
-```bash
-git clone https://github.com/spacevoip/inovavoipapp.git
-cd inovavoipapp
+1. Escolha seu repositório
+2. Preencha os campos:
+   - **Name**: pabx-dashboard
+   - **Environment**: Static Site
+   - **Build Command**: `npm install && npm run build`
+   - **Publish Directory**: `dist`
+
+### 3. Variáveis de Ambiente
+
+No painel do Render, adicione:
 ```
-
-2. Instale as dependências:
-```bash
-npm install
-```
-
-3. Inicie o servidor de desenvolvimento:
-```bash
-npm run dev
-```
-
-## Build para Produção
-
-Para criar uma build de produção:
-
-```bash
-npm run build
-```
-
-## Deploy
-
-O projeto está configurado para deploy automático no Netlify.
-Cada push na branch main irá disparar um novo deploy automaticamente.
-
-## Ambiente
-
-As seguintes variáveis de ambiente são necessárias:
-
-```env
 VITE_API_URL=http://91.108.125.149:5000
+VITE_SECRET_KEY=inovavoip-secure-key-2024
+```
+
+### 4. Deploy
+
+1. Clique em "Create Web Service"
+2. Aguarde o deploy (pode levar alguns minutos)
+3. Seu site estará disponível em: `https://pabx-dashboard.onrender.com`
+
+## Desenvolvimento Local
+
+```bash
+# Instalar dependências
+npm install
+
+# Rodar em desenvolvimento
+npm run dev
+
+# Build para produção
+npm run build
+
+# Preview do build
+npm run preview
 ```
 
 ## Tecnologias
 
-- React
-- TypeScript
+- React + TypeScript
 - Vite
-- TailwindCSS
+- Tailwind CSS
+- Supabase
 - React Query
-- Axios
+- Zustand
+- Recharts
