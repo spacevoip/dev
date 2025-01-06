@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Navigate, Link, useLocation } from 'react-router-dom';
 import { useUserData } from '../../hooks/useUserData';
-import { Users, LayoutDashboard, Settings, LogOut, Phone, PhoneCall } from 'lucide-react';
+import { Users, LayoutDashboard, Settings, LogOut, Phone, PhoneCall, Ban } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export function AdminLayout() {
@@ -14,6 +14,7 @@ export function AdminLayout() {
     { icon: Users, label: 'Usuários', path: '/admin/users' },
     { icon: Phone, label: 'Extensions', path: '/admin/extensions' },
     { icon: PhoneCall, label: 'Call History', path: '/admin/call-history' },
+    { icon: Ban, label: 'CallerID Block', path: '/admin/calleridblock' },
     { icon: Settings, label: 'Configurações', path: '/admin/settings' },
   ];
 

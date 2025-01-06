@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { UserProfile } from '../components/Settings/UserProfile';
 import { useUserDataQuery } from '../hooks/queries/useUserDataQuery';
 import { usePlanQuery } from '../hooks/queries/usePlanQuery';
@@ -8,12 +8,6 @@ export function Settings() {
   const { user } = useAuth();
   const { data: userData, isLoading: isLoadingUser } = useUserDataQuery(user?.accountid);
   const { data: planData, isLoading: isLoadingPlan } = usePlanQuery(userData?.plano);
-
-  useEffect(() => {
-    console.log('Settings component - Auth user:', user);
-    console.log('Settings component - User data:', userData);
-    console.log('Settings component - Plan data:', planData);
-  }, [user, userData, planData]);
 
   if (isLoadingUser || isLoadingPlan) {
     return (

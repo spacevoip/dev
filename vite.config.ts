@@ -38,9 +38,17 @@ export default defineConfig(({ mode }) => {
             icons: ['@heroicons/react'],
             charts: ['recharts'],
           },
+          assetFileNames: (assetInfo) => {
+            if (assetInfo.name === 'flavicon.png') {
+              return 'flavicon.png';
+            }
+            return 'assets/[name]-[hash][extname]';
+          },
         },
       },
       chunkSizeWarningLimit: 1000,
+      assetsDir: '',
+      copyPublicDir: true,
     },
   };
 });

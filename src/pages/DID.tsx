@@ -30,7 +30,8 @@ export const DID = () => {
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700"
+          className="bg-gray-200 text-gray-500 px-4 py-2 rounded-lg flex items-center gap-2 cursor-not-allowed"
+          disabled
         >
           <Plus className="h-5 w-5" />
           Comprar Novo Número
@@ -60,7 +61,8 @@ export const DID = () => {
           </p>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="bg-indigo-600 text-white px-6 py-2 rounded-lg inline-flex items-center gap-2 hover:bg-indigo-700"
+            className="bg-gray-200 text-gray-500 px-6 py-2 rounded-lg inline-flex items-center gap-2 cursor-not-allowed"
+            disabled
           >
             <Plus className="h-5 w-5" />
             Ative agora mesmo

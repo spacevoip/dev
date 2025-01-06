@@ -58,7 +58,7 @@ export const Extensions = () => {
         <h1 className="text-2xl font-bold">Extensions</h1>
         <button
           onClick={() => setIsAddModalOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg hover:from-purple-700 hover:to-blue-600 transition-all"
         >
           <Plus className="h-5 w-5" />
           Add Extension
@@ -85,7 +85,7 @@ export const Extensions = () => {
           <p className="text-gray-500">Nenhum ramal cadastrado.</p>
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg hover:from-purple-700 hover:to-blue-600 transition-all"
           >
             <Plus className="h-5 w-5" />
             Adicionar Primeiro Ramal

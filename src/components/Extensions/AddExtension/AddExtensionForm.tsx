@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { generatePassword } from '../../../utils/password';
 import { RefreshCw } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../../../lib/supabase';
+import debounce from 'lodash/debounce';
 
 interface AddExtensionFormProps {
   onSubmit: (data: {
@@ -28,6 +29,48 @@ export const AddExtensionForm: React.FC<AddExtensionFormProps> = ({
   });
 
   const [loading, setLoading] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
+
+  // Função debounced para verificar o CallerID
+  const checkCallerID = useCallback(
+    debounce(async (callerID: string) => {
+      if (!callerID?.trim()) {
+        setIsBlocked(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('calleridblack')
+          .select('*')
+          .eq('callerid', callerID.trim());
+
+        if (error) return;
+
+        const blocked = data && data.length > 0;
+        if (blocked) {
+          setIsBlocked(true);
+          toast.error('Este CallerID está Bloqueado P/ Uso!');
+        } else {
+          setIsBlocked(false);
+        }
+      } catch (error) {
+        // Silently handle error
+      }
+    }, 500),
+    []
+  );
+
+  const handleCallerIDChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newCallerID = e.target.value;
+    setFormData(prev => ({ ...prev, callerId: newCallerID }));
+    
+    // Reset o estado de bloqueio enquanto o usuário digita
+    setIsBlocked(false);
+    
+    // Verifica após o debounce
+    checkCallerID(newCallerID);
+  };
 
   // Função para gerar número aleatório de 4 dígitos
   const generateNewNumber = async () => {
@@ -71,6 +114,9 @@ export const AddExtensionForm: React.FC<AddExtensionFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isBlocked) {
+      return;
+    }
     onSubmit(formData);
   };
 
@@ -99,12 +145,14 @@ export const AddExtensionForm: React.FC<AddExtensionFormProps> = ({
             readOnly
             className="bg-gray-50 flex-1"
             placeholder="Clique em Generate para gerar um número"
+            required
           />
-          <Button 
-            type="button" 
+          <Button
+            type="button"
             onClick={generateNewNumber}
             disabled={loading}
-            className="flex items-center gap-2 whitespace-nowrap"
+            variant="outline"
+            className="gap-2"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Generate
@@ -116,11 +164,24 @@ export const AddExtensionForm: React.FC<AddExtensionFormProps> = ({
         <label htmlFor="callerId" className="block text-sm font-medium text-gray-700">
           Caller ID
         </label>
-        <Input
-          id="callerId"
-          value={formData.callerId}
-          onChange={(e) => setFormData(prev => ({ ...prev, callerId: e.target.value }))}
-        />
+        <div className="relative">
+          <Input
+            id="callerId"
+            value={formData.callerId}
+            onChange={handleCallerIDChange}
+            className={`transition-colors duration-200 ${
+              isBlocked 
+                ? 'border-red-300 focus:ring-red-500 focus:border-red-500 bg-red-50' 
+                : ''
+            }`}
+            required
+          />
+          {isBlocked && (
+            <div className="absolute -bottom-6 left-0 text-sm text-red-600">
+              Este CallerID está Bloqueado P/ Uso!
+            </div>
+          )}
+        </div>
       </div>
 
       <div>
@@ -130,21 +191,35 @@ export const AddExtensionForm: React.FC<AddExtensionFormProps> = ({
         <div className="flex gap-2">
           <Input
             id="senha"
+            type="text"
             value={formData.senha}
             onChange={(e) => setFormData(prev => ({ ...prev, senha: e.target.value }))}
+            className="flex-1"
             required
           />
-          <Button type="button" onClick={handleGeneratePassword}>
-            Gerar
+          <Button
+            type="button"
+            onClick={handleGeneratePassword}
+            variant="outline"
+          >
+            Generate
           </Button>
         </div>
       </div>
 
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
+      <div className="flex justify-end gap-3 pt-4">
+        <Button
+          type="button"
+          onClick={onCancel}
+          variant="ghost"
+        >
           Cancelar
         </Button>
-        <Button type="submit">
+        <Button
+          type="submit"
+          disabled={isBlocked || loading}
+          variant={isBlocked ? 'destructive' : 'default'}
+        >
           Adicionar
         </Button>
       </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { ActiveCallsTable } from '../components/Calls/ActiveCallsTable';
+import ActiveCallsTable from '../components/Calls/ActiveCallsTable';
 import { useActiveCalls } from '../hooks/useActiveCalls';
 
 export const Calls = () => {
@@ -48,7 +48,7 @@ export const Calls = () => {
             </p>
           </div>
           <div className="p-6">
-            <ActiveCallsTable calls={calls} />
+            <ActiveCallsTable />
           </div>
         </div>
       </div>

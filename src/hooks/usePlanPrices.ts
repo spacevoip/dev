@@ -22,41 +22,26 @@ export const usePlanPrices = () => {
     const fetchPrices = async () => {
       try {
         setLoading(true);
-        console.log('Iniciando busca de preços...');
         
         const { data, error } = await supabase
           .from('planos')
           .select('id, valor');
 
-        console.log('Resposta do Supabase:', { data, error });
-
         if (error) {
-          console.error('Erro ao buscar preços:', error);
           return;
         }
 
         if (data) {
-          console.log('Dados recebidos:', data);
-          
           const priceMap = data.reduce((acc: Record<string, number>, plan: PlanPrice) => {
-            console.log('Processando plano:', {
-              id: plan.id,
-              valor: plan.valor,
-              frontendId: ID_MAPPING[plan.id]
-            });
-            
             const frontendId = ID_MAPPING[plan.id];
             if (frontendId) {
-              // Usar o valor diretamente, pois já é um número
               acc[frontendId] = plan.valor;
-              console.log(`Preço definido para ${frontendId}:`, acc[frontendId]);
             } else {
               console.log('ID não encontrado no mapeamento:', plan.id);
             }
             return acc;
           }, {});
           
-          console.log('Mapa final de preços:', priceMap);
           setPrices(priceMap);
         }
       } catch (err) {
@@ -88,6 +73,5 @@ export const usePlanPrices = () => {
     };
   }, []);
 
-  console.log('Hook retornando:', { prices, loading });
   return { prices, loading };
 };

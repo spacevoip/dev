@@ -19,11 +19,9 @@ export const Login = () => {
     setLoading(true);
 
     try {
-      console.log('Enviando credenciais:', credentials);
       const { user, error } = await login(credentials);
 
       if (error) {
-        console.log('Erro retornado:', error);
         toast.error(error, {
           duration: 4000,
           position: 'top-center',
@@ -33,7 +31,6 @@ export const Login = () => {
       }
 
       if (user) {
-        console.log('Usuário logado:', user);
         localStorage.setItem('user', JSON.stringify(user));
         setUser(user);
         
@@ -45,7 +42,6 @@ export const Login = () => {
         navigate('/', { replace: true });
       }
     } catch (err) {
-      console.error('Erro inesperado no login:', err);
       toast.error('Erro inesperado ao fazer login. Por favor, tente novamente.', {
         duration: 4000,
         position: 'top-center',

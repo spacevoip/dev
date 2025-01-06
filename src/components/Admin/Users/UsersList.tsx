@@ -95,7 +95,11 @@ export const UsersList: React.FC<UsersListProps> = ({ users, loading, onEdit, on
                           <Edit className="h-5 w-5" />
                         </button>
                         <button
-                          onClick={() => onDelete(user.id)}
+                          onClick={() => {
+                            if (window.confirm('Tem certeza que deseja excluir este usuário?')) {
+                              onDelete(user.id);
+                            }
+                          }}
                           className="text-red-600 hover:text-red-900"
                         >
                           <Trash2 className="h-5 w-5" />

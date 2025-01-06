@@ -130,8 +130,6 @@ export const register = async (data: RegisterData): Promise<{ user: User | null;
 
 export const login = async (data: LoginData): Promise<{ user: User | null; error: string | null }> => {
   try {
-    console.log('Iniciando login com email:', data.email);
-
     // Busca usuário pelo email
     const { data: user, error } = await supabase
       .from('users')
@@ -139,46 +137,36 @@ export const login = async (data: LoginData): Promise<{ user: User | null; error
       .eq('email', data.email)
       .single();
 
-    console.log('Resposta do Supabase:', { user, error });
-
     if (error || !user) {
-      console.log('Usuário não encontrado:', error);
       return { user: null, error: 'Usuário não encontrado' };
     }
 
     // Verifica se o status está ativo
-    console.log('Status do usuário:', user.status);
     if (!user.status?.toLowerCase().includes('ativo')) {
-      console.log('Conta inativa');
       return { user: null, error: 'Conta inativa' };
     }
 
     // Verifica a senha
-    console.log('Verificando senha...');
     const validPassword = await bcrypt.compare(data.password, user.password);
-    console.log('Senha válida?', validPassword);
     
     if (!validPassword) {
       return { user: null, error: 'Senha incorreta' };
     }
 
     // Atualiza último login
-    console.log('Atualizando último login...');
     const { error: updateError } = await supabase
       .from('users')
       .update({ last_login: new Date().toISOString() })
       .eq('id', user.id);
 
     if (updateError) {
-      console.error('Erro ao atualizar último login:', updateError);
+      return { user: null, error: 'Erro ao atualizar último login' };
     }
 
     // Remove o campo password antes de retornar
     const { password, ...userWithoutPassword } = user;
-    console.log('Login bem-sucedido, retornando usuário:', userWithoutPassword);
     return { user: userWithoutPassword as User, error: null };
   } catch (err) {
-    console.error('Erro no login:', err);
     return { user: null, error: err instanceof Error ? err.message : 'Erro ao fazer login' };
   }
 };
@@ -198,8 +186,21 @@ export const getCurrentUser = async (): Promise<User | null> => {
 
 export const logout = async (): Promise<void> => {
   try {
-    localStorage.removeItem('user');
+    // Faz logout no Supabase
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      throw error;
+    }
+    
+    // Limpa o localStorage
+    localStorage.clear();
+
+    // Limpa os cookies de sessão
+    document.cookie.split(";").forEach(function(c) { 
+      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+    });
   } catch (err) {
     console.error('Erro ao fazer logout:', err);
+    throw err;
   }
 };

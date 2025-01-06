@@ -12,8 +12,6 @@ export interface Plan {
 }
 
 async function fetchPlan(planName: string): Promise<Plan | null> {
-  console.log('Fetching plan with name:', planName);
-  
   const { data, error } = await supabase
     .from('planos')
     .select('*')
@@ -21,20 +19,29 @@ async function fetchPlan(planName: string): Promise<Plan | null> {
     .single();
 
   if (error) {
-    console.error('Error fetching plan data:', error);
     return null;
   }
 
-  console.log('Plan data fetched:', data);
   return data;
 }
 
 export function usePlanQuery(planName: string | undefined) {
-  console.log('usePlanQuery called with planName:', planName);
-  
-  return useQuery({
+  const { data: plan, isLoading } = useQuery({
     queryKey: ['plan', planName],
-    queryFn: () => fetchPlan(planName!),
+    queryFn: async () => {
+      if (!planName) return null;
+
+      const { data, error } = await supabase
+        .from('plans')
+        .select('*')
+        .eq('name', planName)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
     enabled: !!planName,
   });
+
+  return { data: plan, isLoading };
 }

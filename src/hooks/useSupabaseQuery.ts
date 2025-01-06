@@ -49,7 +49,6 @@ export const useSupabaseQuery = <T extends { accountid?: string }>(
 
       setData(result as T[]);
     } catch (err) {
-      console.error(`Error fetching ${table}:`, err);
       setError(`Erro ao carregar dados de ${table}`);
     } finally {
       setLoading(false);
@@ -102,8 +101,7 @@ export const useSupabaseUpdate = <T extends object>(table: string) => {
     const { data: result, error } = await supabase
       .from(table)
       .update(data)
-      .eq('id', id)
-      .eq('accountid', currentUser.accountid); // Garante que só atualiza registros do usuário
+      .match({ id, accountid: currentUser.accountid });
 
     if (error) throw error;
     return result;
@@ -121,13 +119,13 @@ export const useSupabaseDelete = (table: string) => {
       throw new Error('Usuário não autenticado');
     }
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from(table)
       .delete()
-      .eq('id', id)
-      .eq('accountid', currentUser.accountid); // Garante que só deleta registros do usuário
+      .match({ id, accountid: currentUser.accountid });
 
     if (error) throw error;
+    return data;
   };
 
   return { remove };

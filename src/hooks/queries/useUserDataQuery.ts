@@ -12,8 +12,6 @@ export interface UserData {
 }
 
 async function fetchUserData(accountId: string): Promise<UserData | null> {
-  console.log('Fetching user data with accountId:', accountId);
-  
   const { data, error } = await supabase
     .from('users')
     .select('*')
@@ -21,17 +19,13 @@ async function fetchUserData(accountId: string): Promise<UserData | null> {
     .single();
 
   if (error) {
-    console.error('Error fetching user data:', error);
     return null;
   }
 
-  console.log('User data fetched:', data);
   return data;
 }
 
 export function useUserDataQuery(accountId: string | undefined) {
-  console.log('useUserDataQuery called with accountId:', accountId);
-  
   return useQuery({
     queryKey: ['userData', accountId],
     queryFn: () => fetchUserData(accountId!),

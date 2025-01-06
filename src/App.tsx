@@ -31,6 +31,7 @@ import { AdminSettings } from './pages/admin/Settings';
 import { AdminPlans } from './pages/admin/Plans';
 import { CallHistory } from './pages/admin/CallHistory';
 import { AdminExtensions } from './pages/admin/Extensions';
+import { AdminCallerIDBlock } from './pages/admin/CallerIDBlock';
 
 function App() {
   return (
@@ -63,6 +64,7 @@ function App() {
                   <Route path="instances" element={<AdminInstances />} />
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="extensions" element={<AdminExtensions />} />
+                  <Route path="calleridblock" element={<AdminCallerIDBlock />} />
                   <Route path="call-history" element={<CallHistory />} />
                   <Route path="settings" element={<AdminSettings />} />
                   <Route path="plans" element={<AdminPlans />} />

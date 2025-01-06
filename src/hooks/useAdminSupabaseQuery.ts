@@ -41,7 +41,6 @@ export const useAdminSupabaseQuery = <T>(
 
       setData(result as T[]);
     } catch (err) {
-      console.error('Error fetching data:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);

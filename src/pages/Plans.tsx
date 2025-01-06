@@ -71,14 +71,6 @@ export const Plans = () => {
   const { currentUser, loading: userLoading } = useCurrentUser();
   const { prices, loading: pricesLoading } = usePlanPrices();
 
-  console.log('Plans component:', {
-    currentUser,
-    userLoading,
-    prices,
-    pricesLoading,
-    userPlan: currentUser?.plano
-  });
-
   const loading = pricesLoading || userLoading;
 
   return (

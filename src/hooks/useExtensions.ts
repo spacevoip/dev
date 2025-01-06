@@ -1,8 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
-
-// Usando a variável de ambiente do Vite
-const API_URL = import.meta.env.VITE_API_URL;
+import { supabase } from '../lib/supabase';
 
 export interface Extension {
   id: string;
@@ -24,12 +22,12 @@ export const useExtensions = () => {
       }
 
       try {
-        const response = await fetch(`${API_URL}/extensions`);
-        if (!response.ok) {
-          throw new Error('Erro ao buscar ramais');
-        }
-        
-        const data = await response.json();
+        const { data, error } = await supabase
+          .from('extensions')
+          .select('*')
+          .eq('accountid', accountId);
+
+        if (error) throw error;
         return data || [];
       } catch (error) {
         console.error('Erro ao buscar ramais:', error);
