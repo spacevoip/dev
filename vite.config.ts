@@ -21,6 +21,7 @@ export default defineConfig(({ mode }) => {
           secure: false,
         },
       },
+      historyApiFallback: true, // Adiciona suporte ao history API fallback
     },
     resolve: {
       alias: {
