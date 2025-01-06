@@ -31,11 +31,11 @@ const ensureHttps = (url: string) => url.replace(/^http:/, 'https:');
 
 export function useActiveCalls() {
   const { user } = useAuth();
-  const accountId = user?.accountid;
+  const userId = user?.id;
 
   const fetchCalls = async () => {
-    if (!accountId) {
-      console.log('Nenhum accountId disponível');
+    if (!userId) {
+      console.log('Nenhum userId disponível');
       return [];
     }
 
@@ -89,34 +89,65 @@ export function useActiveCalls() {
       // Filtra e processa as chamadas
       const processedCalls = data.active_calls
         .filter(call => {
-          const isValid = call.Accountcode === accountId && ['Ring', 'Up'].includes(call.State);
+          const isValid = call.Accountcode === userId && ['Ring', 'Up'].includes(call.State);
           if (!isValid) {
-            console.log('Chamada filtrada:', { call, accountId });
+            console.log('Chamada filtrada:', { call, userId });
           }
           return isValid;
         })
         .map(call => ({
-          id: crypto.randomUUID(),
+          id: call.Channel, // Usando o Channel como ID único
           callerid: call.CallerID,
           duracao: call.Duration,
           destino: call.Extension,
           status: translateState(call.State),
           ramal: extractRamal(call.Channel),
           channel: call.Channel,
+          user_id: userId, // Adicionando user_id para RLS
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         }));
 
       console.log('Chamadas processadas:', processedCalls);
 
       // Salva as chamadas no banco
       if (processedCalls.length > 0) {
-        const { error } = await supabase
-          .from('active_calls')
-          .upsert(processedCalls, {
-            onConflict: 'id',
-          });
+        try {
+          // Primeiro, remove chamadas antigas deste usuário
+          const { error: deleteError } = await supabase
+            .from('active_calls')
+            .delete()
+            .eq('user_id', userId);
 
-        if (error) {
-          console.error('Erro ao salvar chamadas:', error);
+          if (deleteError) {
+            console.error('Erro ao limpar chamadas antigas:', deleteError);
+          }
+
+          // Depois, insere as novas chamadas
+          const { error: insertError } = await supabase
+            .from('active_calls')
+            .insert(processedCalls);
+
+          if (insertError) {
+            console.error('Erro ao inserir novas chamadas:', insertError);
+            // Não retornamos erro aqui para não afetar a UI
+          }
+        } catch (error) {
+          console.error('Erro ao sincronizar com Supabase:', error);
+        }
+      } else {
+        // Se não há chamadas ativas, limpa a tabela para este usuário
+        try {
+          const { error: deleteError } = await supabase
+            .from('active_calls')
+            .delete()
+            .eq('user_id', userId);
+
+          if (deleteError) {
+            console.error('Erro ao limpar chamadas:', deleteError);
+          }
+        } catch (error) {
+          console.error('Erro ao limpar Supabase:', error);
         }
       }
 
@@ -132,10 +163,10 @@ export function useActiveCalls() {
   };
 
   return useQuery({
-    queryKey: ['active-calls', accountId],
+    queryKey: ['active-calls', userId],
     queryFn: fetchCalls,
     refetchInterval: 5000,
-    enabled: !!accountId && !!API_URL,
+    enabled: !!userId && !!API_URL,
     retry: 1,
     retryDelay: 1000,
     staleTime: 2000,
