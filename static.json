@@ -7,9 +7,9 @@
   "https_only": true,
   "headers": {
     "/**": {
-      "Cache-Control": "no-store, no-cache",
+      "Cache-Control": "no-store, no-cache, must-revalidate",
       "Access-Control-Allow-Origin": "*"
     }
   },
-  "error_page": "index.html"
+  "error_page": "404.html"
 }
