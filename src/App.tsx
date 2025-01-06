@@ -28,9 +28,9 @@ import { AdminDashboard } from './pages/admin/Dashboard';
 import { AdminInstances } from './pages/admin/Instances';
 import { AdminUsers } from './pages/admin/Users';
 import { AdminSettings } from './pages/admin/Settings';
-import { AdminPlans } from './pages/Admin/Plans';
+import { AdminPlans } from './pages/admin/Plans';
 import { CallHistory } from './pages/admin/CallHistory';
-import { AdminExtensions } from './pages/Admin/Extensions';
+import { AdminExtensions } from './pages/admin/Extensions';
 
 function App() {
   return (
