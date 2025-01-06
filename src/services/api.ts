@@ -2,11 +2,11 @@ import axios from 'axios';
 import CryptoJS from 'crypto-js';
 
 const api = axios.create({
-  baseURL: 'http://91.108.125.149:5000'
+  baseURL: import.meta.env.VITE_API_URL
 });
 
-// Chave secreta para criptografia (mova para .env em produção)
-const SECRET_KEY = 'your-secret-key-123';
+// Chave secreta para criptografia
+const SECRET_KEY = import.meta.env.VITE_SECRET_KEY || 'inovavoip-secure-key-2024';
 
 // Função para gerar um timestamp aleatório
 const getRandomTimestamp = () => {
