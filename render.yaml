@@ -8,7 +8,7 @@ services:
     branch: master
     envVars:
       - key: VITE_API_URL
-        value: http://91.108.125.149:5000
+        value: https://91.108.125.149:5000
       - key: VITE_SECRET_KEY
         value: inovavoip-secure-key-2024
     headers:
