@@ -4,7 +4,7 @@ import type { ActiveCall, CallsResponse } from '../types/activeCalls';
 import { supabase } from '../lib/supabase';
 
 // Usando a variável de ambiente do Vite
-const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, '');
+const API_URL = import.meta.env.VITE_API_URL?.replace(/^http:/, 'https:').replace(/\/$/, '');
 
 // Função auxiliar para extrair o ramal do Channel
 function extractRamal(channel: string): string {
@@ -40,7 +40,7 @@ export function useActiveCalls() {
     }
 
     try {
-      console.log('Tentando buscar chamadas de:', `${API_URL}/active-calls`);
+      console.log('Tentando buscar chamadas de:', `${API_URL}/active-calls');
       
       // Busca as chamadas da API com timeout de 5 segundos
       const controller = new AbortController();
