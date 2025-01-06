@@ -21,6 +21,11 @@ export default defineConfig(({ mode }) => {
           secure: false,
         },
       },
+      historyApiFallback: true,
+    },
+    preview: {
+      port: 4173,
+      historyApiFallback: true,
     },
     resolve: {
       alias: {
