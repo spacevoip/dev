@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { ExtensionStatusResponse } from '../types/extensionStatus';
+import { ExtensionStatusResponse } from '../types/extensionStatus';
 
 interface ExtensionStatus {
   agent_name: string;
@@ -18,7 +18,7 @@ export const useExtensionStatus = () => {
 
   const fetchExtensionStatus = async () => {
     try {
-      const response = await fetch('https://91.108.125.149:5000/list-extensions', {
+      const response = await fetch('https://api.appinovavoip.com/list-extensions', {
         mode: 'cors',
         credentials: 'omit',
         headers: {

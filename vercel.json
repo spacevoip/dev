@@ -6,7 +6,7 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "https://91.108.125.149:5000/$1"
+      "dest": "https://api.appinovavoip.com/$1"
     },
     {
       "src": "/static/(.*)",
@@ -62,6 +62,10 @@
           "value": "nosniff"
         },
         {
+          "key": "X-DNS-Prefetch-Control",
+          "value": "off"
+        },
+        {
           "key": "Referrer-Policy",
           "value": "strict-origin-when-cross-origin"
         },
@@ -81,7 +85,7 @@
     }
   ],
   "env": {
-    "VITE_API_URL": "http://91.108.125.149:5000",
+    "VITE_API_URL": "https://api.appinovavoip.com",
     "VITE_SECRET_KEY": "inovavoip-secure-key-2024"
   }
 }

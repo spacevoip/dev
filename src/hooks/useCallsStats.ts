@@ -1,7 +1,6 @@
 // Este arquivo não é mais necessário e pode ser removido
 
 import { useState, useEffect } from 'react';
-import { ActiveCall } from '../types/activeCalls';
 
 interface CallsStats {
   activeCalls: number;
@@ -24,7 +23,7 @@ export const useCallsStats = (accountcode: string) => {
     const fetchStats = async () => {
       try {
         // Busca chamadas ativas
-        const activeCallsResponse = await fetch('https://91.108.125.149:5000/active-calls');
+        const activeCallsResponse = await fetch('https://api.appinovavoip.com/active-calls');
         const activeCallsData = await activeCallsResponse.json();
 
         // Filtra chamadas ativas pelo accountcode
@@ -35,43 +34,37 @@ export const useCallsStats = (accountcode: string) => {
         ).length;
 
         // Busca ramais usando a rota correta
-        const extensionsResponse = await fetch('https://91.108.125.149:5000/extension-status');
+        const extensionsResponse = await fetch('https://api.appinovavoip.com/extension-status');
         const extensionsData = await extensionsResponse.json();
-        
-        // Filtra ramais online pelo accountcode
-        const onlineExtensions = extensionsData.filter((ext: any) =>
-          ext.accountcode === accountcode && 
-          ext.status === 'Online (Livre)'
+
+        // Conta ramais online
+        const onlineExtensions = extensionsData.extensions.filter((ext: any) => 
+          ext.status.toLowerCase().includes('online')
         ).length;
 
-        // Busca chamadas do dia da tabela CDR
-        const todayCallsResponse = await fetch(`http://91.108.125.149:5000/cdr/today/${accountcode}`);
+        // Busca chamadas do dia
+        const todayCallsResponse = await fetch('https://api.appinovavoip.com/today-calls');
         const todayCallsData = await todayCallsResponse.json();
-        
-        // O backend já retorna a contagem filtrada
-        const todayCalls = todayCallsData.count || 0;
 
+        // Atualiza o estado
         setStats({
           activeCalls,
           onlineExtensions,
-          todayCalls,
+          todayCalls: todayCallsData.total || 0,
           loading: false,
           error: null
         });
       } catch (error) {
-        console.error('Erro ao buscar estatísticas:', error);
+        console.error('Error fetching stats:', error);
         setStats(prev => ({
           ...prev,
           loading: false,
-          error: 'Erro ao carregar estatísticas'
+          error: 'Failed to fetch stats'
         }));
       }
     };
 
-    // Busca inicial
     fetchStats();
-
-    // Atualiza a cada 5 segundos
     const interval = setInterval(fetchStats, 5000);
 
     return () => clearInterval(interval);
