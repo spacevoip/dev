@@ -8,6 +8,7 @@ import { useExtensionStatus } from '../hooks/useExtensionStatus';
 import { Extension } from '../types/extension';
 import { EditExtensionModal } from '../components/Extensions/EditExtensionModal';
 import { supabase } from '../lib/supabase';
+import { toast } from 'react-hot-toast';
 
 export const Extensions = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -39,16 +40,29 @@ export const Extensions = () => {
     }
 
     try {
-      const { error } = await supabase
+      // Primeiro, deleta da tabela extensions
+      const { error: extensionError } = await supabase
         .from('extensions')
-        .update({ status: 'inativo' })
+        .delete()
         .eq('id', extension.id);
 
-      if (error) throw error;
+      if (extensionError) throw extensionError;
+
+      // Depois, deleta da tabela active_calls se houver alguma chamada ativa
+      const { error: activeCallError } = await supabase
+        .from('active_calls')
+        .delete()
+        .eq('extension', extension.numero);
+
+      if (activeCallError) {
+        console.error('Erro ao limpar chamadas ativas:', activeCallError);
+      }
+
+      toast.success(`Ramal ${extension.numero} excluído com sucesso!`);
       refetch();
     } catch (error) {
       console.error('Erro ao excluir ramal:', error);
-      alert('Erro ao excluir ramal. Por favor, tente novamente.');
+      toast.error('Erro ao excluir ramal. Por favor, tente novamente.');
     }
   };
 
@@ -99,6 +113,7 @@ export const Extensions = () => {
         />
       )}
 
+      {/* Modais */}
       <AddExtensionModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
@@ -108,6 +123,7 @@ export const Extensions = () => {
       {editingExtension && (
         <EditExtensionModal
           extension={editingExtension}
+          isOpen={!!editingExtension}
           onClose={() => setEditingExtension(null)}
           onSuccess={handleEditSuccess}
         />
