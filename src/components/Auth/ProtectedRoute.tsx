@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { toast } from 'react-hot-toast';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -23,13 +24,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  // Se não estiver logado, redireciona para o login
+  // Se não estiver logado, salva a URL atual e redireciona para o login
   if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
   // Se requer admin e o usuário não é admin, redireciona para o dashboard
   if (requireAdmin && user.role !== 'admin') {
+    toast.error('Acesso restrito a administradores');
     return <Navigate to="/dash" replace />;
   }
 

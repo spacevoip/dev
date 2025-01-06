@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
 import { login } from '../lib/auth';
 import { toast } from 'react-hot-toast';
@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 export const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [credentials, setCredentials] = useState({
@@ -39,7 +40,9 @@ export const Login = () => {
           position: 'top-center',
         });
         
-        navigate('/', { replace: true });
+        // Redireciona para a URL original ou para o dashboard
+        const from = location.state?.from || '/';
+        navigate(from, { replace: true });
       }
     } catch (err) {
       toast.error('Erro inesperado ao fazer login. Por favor, tente novamente.', {
