@@ -5,7 +5,6 @@ import { terser } from 'rollup-plugin-terser';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/',
   build: {
     rollupOptions: {
       output: {
@@ -17,18 +16,18 @@ export default defineConfig({
             comments: false,
           },
           compress: {
-            drop_console: false, // Temporariamente habilitando console logs para debug
+            drop_console: true,
             drop_debugger: true,
-            pure_funcs: [],
+            pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.warn'],
           },
           mangle: {
-            properties: false, // Desabilitando mangle de propriedades para evitar problemas
+            properties: true,
           },
         }),
       ],
     },
     minify: 'terser',
-    sourcemap: true, // Habilitando sourcemap para debug
+    sourcemap: false,
   },
   server: {
     headers: {
