@@ -4,6 +4,8 @@ services:
     buildCommand: npm install && npm run build
     publishDir: dist
     staticPublishPath: /
+    autoDeploy: true
+    branch: master
     envVars:
       - key: VITE_API_URL
         value: http://91.108.125.149:5000
