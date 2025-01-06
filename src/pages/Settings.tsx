@@ -9,7 +9,7 @@ export function Settings() {
   const { data: userData, isLoading: isLoadingUser } = useUserDataQuery(user?.accountid);
   const { data: planData, isLoading: isLoadingPlan } = usePlanQuery(userData?.plano);
 
-  if (isLoadingUser || isLoadingPlan) {
+  if (isLoadingUser) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -17,10 +17,18 @@ export function Settings() {
     );
   }
 
+  if (!userData) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <p className="text-gray-500">Não foi possível carregar os dados do usuário.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Configurações</h1>
-      {userData && <UserProfile userData={userData} planData={planData} />}
+      <UserProfile userData={userData} planData={planData} />
     </div>
   );
 }

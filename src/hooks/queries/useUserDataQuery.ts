@@ -9,26 +9,32 @@ export interface UserData {
   accountid: string;
   status: string;
   role?: 'admin' | 'cliente' | 'user';
-}
-
-async function fetchUserData(accountId: string): Promise<UserData | null> {
-  const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('accountid', accountId)
-    .single();
-
-  if (error) {
-    return null;
-  }
-
-  return data;
+  contato?: string;
+  documento?: string;
 }
 
 export function useUserDataQuery(accountId: string | undefined) {
   return useQuery({
     queryKey: ['userData', accountId],
-    queryFn: () => fetchUserData(accountId!),
+    queryFn: async () => {
+      if (!accountId) return null;
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('accountid', accountId)
+        .single();
+
+      if (error) {
+        console.error('Erro ao buscar dados do usuário:', error);
+        return null;
+      }
+
+      return data;
+    },
     enabled: !!accountId,
+    staleTime: 1000 * 60 * 5, // 5 minutos
+    cacheTime: 1000 * 60 * 30, // 30 minutos
+    retry: 2,
   });
 }

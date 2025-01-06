@@ -32,15 +32,22 @@ export function usePlanQuery(planName: string | undefined) {
       if (!planName) return null;
 
       const { data, error } = await supabase
-        .from('plans')
+        .from('planos')
         .select('*')
-        .eq('name', planName)
+        .eq('nome', planName)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao buscar plano:', error);
+        return null;
+      }
+
       return data;
     },
     enabled: !!planName,
+    staleTime: 1000 * 60 * 5, // 5 minutos
+    cacheTime: 1000 * 60 * 30, // 30 minutos
+    retry: 2,
   });
 
   return { data: plan, isLoading };
