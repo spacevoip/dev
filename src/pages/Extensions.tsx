@@ -15,9 +15,8 @@ export const Extensions = () => {
   const [editingExtension, setEditingExtension] = useState<Extension | null>(null);
   const { extensionStatuses } = useExtensionStatus();
 
-  const { data: extensions, loading, error, refetch } = useSupabaseQuery<Extension>('extensions', {
-    additionalFilters: (query) => query.eq('status', 'ativo'),
-  });
+  // Removido o filtro de status: 'ativo' para mostrar todos os ramais
+  const { data: extensions, loading, error, refetch } = useSupabaseQuery<Extension>('extensions');
 
   // Formata os dados com o status atual
   const formattedExtensions = extensions?.map(ext => ({
@@ -40,15 +39,7 @@ export const Extensions = () => {
     }
 
     try {
-      // Primeiro, deleta da tabela extensions
-      const { error: extensionError } = await supabase
-        .from('extensions')
-        .delete()
-        .eq('id', extension.id);
-
-      if (extensionError) throw extensionError;
-
-      // Depois, deleta da tabela active_calls se houver alguma chamada ativa
+      // Primeiro, deleta da tabela active_calls se houver alguma chamada ativa
       const { error: activeCallError } = await supabase
         .from('active_calls')
         .delete()
@@ -56,6 +47,26 @@ export const Extensions = () => {
 
       if (activeCallError) {
         console.error('Erro ao limpar chamadas ativas:', activeCallError);
+      }
+
+      // Depois, deleta o ramal da tabela extensions
+      const { error: extensionError } = await supabase
+        .from('extensions')
+        .delete()
+        .eq('id', extension.id);
+
+      if (extensionError) throw extensionError;
+
+      // Por fim, notifica a API para remover o ramal do Asterisk
+      try {
+        await fetch(`https://api.appinovavoip.com/delete-extension/${extension.numero}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+      } catch (apiError) {
+        console.error('Erro ao remover ramal do Asterisk:', apiError);
       }
 
       toast.success(`Ramal ${extension.numero} excluído com sucesso!`);
