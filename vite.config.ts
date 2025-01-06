@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: env.VITE_API_URL || 'https://91.108.125.149:5000',
           changeOrigin: true,
-          secure: false, // Necessário para certificados auto-assinados
+          secure: false,
           rewrite: (path) => path.replace(/^\/api/, ''),
         },
         '/ws': {
@@ -21,7 +21,6 @@ export default defineConfig(({ mode }) => {
           secure: false,
         },
       },
-      historyApiFallback: true, // Adiciona suporte ao history API fallback
     },
     resolve: {
       alias: {
@@ -29,6 +28,9 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
+      outDir: 'dist',
+      assetsDir: 'assets',
+      sourcemap: false,
       rollupOptions: {
         output: {
           manualChunks: {
@@ -38,17 +40,9 @@ export default defineConfig(({ mode }) => {
             icons: ['@heroicons/react'],
             charts: ['recharts'],
           },
-          assetFileNames: (assetInfo) => {
-            if (assetInfo.name === 'flavicon.png') {
-              return 'flavicon.png';
-            }
-            return 'assets/[name]-[hash][extname]';
-          },
         },
       },
       chunkSizeWarningLimit: 1000,
-      assetsDir: '',
-      copyPublicDir: true,
     },
   };
 });

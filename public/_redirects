@@ -1,1 +1,5 @@
 /* /index.html 200
+/api/* https://91.108.125.149:5000/:splat 200
+/static/* /static/:splat 200
+/assets/* /assets/:splat 200
+/* /index.html 200

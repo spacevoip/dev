@@ -14,15 +14,39 @@ services:
         value: inovavoip-secure-key-2024
     routes:
       - type: rewrite
-        source: /(.*)
-        destination: /index.html
+        source: /api/*
+        destination: https://91.108.125.149:5000/:splat
       - type: rewrite
-        source: /**
+        source: /static/*
+        destination: /static/:splat
+      - type: rewrite
+        source: /assets/*
+        destination: /assets/:splat
+      - type: rewrite
+        source: /*
         destination: /index.html
     headers:
       - path: /*
         name: Cache-Control
-        value: no-store, no-cache, must-revalidate
+        value: no-store, no-cache, must-revalidate, proxy-revalidate
+      - path: /*
+        name: Pragma
+        value: no-cache
+      - path: /*
+        name: Expires
+        value: 0
+      - path: /*
+        name: Surrogate-Control
+        value: no-store
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
       - path: /*
         name: Access-Control-Allow-Origin
         value: "*"
