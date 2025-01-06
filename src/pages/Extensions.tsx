@@ -1,19 +1,20 @@
 import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { AddExtensionModal } from '../components/Extensions/AddExtensionModal';
+import { EditExtensionModal } from '../components/Extensions/EditExtensionModal';
 import { ExtensionList } from '../components/Extensions/ExtensionList';
 import { ExtensionsLimit } from '../components/Extensions/ExtensionsLimit';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
-import { useExtensionStatus } from '../hooks/useExtensionStatus';
 import { Extension } from '../types/extension';
-import { EditExtensionModal } from '../components/Extensions/EditExtensionModal';
-import { supabase } from '../lib/supabase';
+import { useExtensionStatus } from '../hooks/useExtensionStatus';
+import { useExtensionsCount } from '../hooks/useExtensionsCount';
 import { toast } from 'react-hot-toast';
 
 export const Extensions = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingExtension, setEditingExtension] = useState<Extension | null>(null);
   const { extensionStatuses } = useExtensionStatus();
+  const { currentCount, planLimit, loading: limitLoading } = useExtensionsCount();
 
   // Removido o filtro de status: 'ativo' para mostrar todos os ramais
   const { data: extensions, loading, error, refetch } = useSupabaseQuery<Extension>('extensions');
@@ -23,6 +24,29 @@ export const Extensions = () => {
     ...ext,
     status: extensionStatuses[ext.numero] || 'unknown',
   })) || [];
+
+  const handleAddClick = async () => {
+    if (limitLoading) {
+      toast.loading('Verificando limite de ramais...');
+      return;
+    }
+
+    if (currentCount >= planLimit) {
+      toast.error(
+        <div>
+          <p className="font-medium">Limite de ramais atingido!</p>
+          <p className="text-sm mt-1">
+            Seu plano permite até {planLimit} ramais.
+            <br />
+            Faça upgrade para adicionar mais.
+          </p>
+        </div>
+      );
+      return;
+    }
+
+    setIsAddModalOpen(true);
+  };
 
   const handleAddSuccess = () => {
     refetch();
@@ -39,41 +63,18 @@ export const Extensions = () => {
     }
 
     try {
-      // Primeiro, deleta da tabela active_calls se houver alguma chamada ativa
-      const { error: activeCallError } = await supabase
-        .from('active_calls')
-        .delete()
-        .eq('extension', extension.numero);
-
-      if (activeCallError) {
-        console.error('Erro ao limpar chamadas ativas:', activeCallError);
-      }
-
-      // Depois, deleta o ramal da tabela extensions
-      const { error: extensionError } = await supabase
+      const { error } = await supabase
         .from('extensions')
         .delete()
         .eq('id', extension.id);
 
-      if (extensionError) throw extensionError;
+      if (error) throw error;
 
-      // Por fim, notifica a API para remover o ramal do Asterisk
-      try {
-        await fetch(`https://api.appinovavoip.com/delete-extension/${extension.numero}`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-      } catch (apiError) {
-        console.error('Erro ao remover ramal do Asterisk:', apiError);
-      }
-
-      toast.success(`Ramal ${extension.numero} excluído com sucesso!`);
       refetch();
+      toast.success('Ramal excluído com sucesso!');
     } catch (error) {
       console.error('Erro ao excluir ramal:', error);
-      toast.error('Erro ao excluir ramal. Por favor, tente novamente.');
+      toast.error('Erro ao excluir ramal');
     }
   };
 
@@ -82,8 +83,9 @@ export const Extensions = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Extensions</h1>
         <button
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={handleAddClick}
           className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg hover:from-purple-700 hover:to-blue-600 transition-all"
+          disabled={loading || limitLoading}
         >
           <Plus className="h-5 w-5" />
           Add Extension
@@ -109,7 +111,7 @@ export const Extensions = () => {
         <div className="bg-white shadow rounded-lg p-8 text-center">
           <p className="text-gray-500">Nenhum ramal cadastrado.</p>
           <button
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={handleAddClick}
             className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg hover:from-purple-700 hover:to-blue-600 transition-all"
           >
             <Plus className="h-5 w-5" />

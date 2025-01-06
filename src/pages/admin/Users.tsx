@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UsersList } from '../../components/Admin/Users/UsersList';
-import { Plus } from 'lucide-react';
+import { Plus, RefreshCw } from 'lucide-react';
 import type { AdminUser } from '../../types/admin';
 import { supabase } from '../../lib/supabase';
 import { AddUserModal } from '../../components/Admin/Users/AddUserModal';
@@ -35,6 +35,7 @@ export const AdminUsers = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchUsers = async () => {
     try {
@@ -74,9 +75,16 @@ export const AdminUsers = () => {
     } catch (error) {
       console.error('Error fetching users:', error);
       setError('Erro ao carregar usuários');
+      toast.error('Erro ao carregar usuários');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchUsers();
   };
 
   useEffect(() => {
@@ -106,22 +114,18 @@ export const AdminUsers = () => {
     try {
       const { error } = await supabase
         .from('users')
-        .update({
-          name: userData.name,
-          email: userData.email,
-          plano: userData.plano,
-          status: userData.status,
-          ...(userData.password ? { password: userData.password } : {})
-        })
+        .update(userData)
         .eq('id', userData.id);
 
       if (error) throw error;
 
+      setUsers(prev =>
+        prev.map(user => (user.id === userData.id ? { ...user, ...userData } : user))
+      );
       toast.success('Usuário atualizado com sucesso!');
-      fetchUsers();
-    } catch (error) {
-      console.error('Error updating user:', error);
-      toast.error('Erro ao atualizar usuário');
+    } catch (err) {
+      console.error('Erro ao atualizar usuário:', err);
+      toast.error('Erro ao atualizar usuário. Tente novamente.');
     }
   };
 
@@ -134,7 +138,7 @@ export const AdminUsers = () => {
 
       if (error) throw error;
 
-      setUsers(prev => prev.filter(u => u.id !== id));
+      setUsers(prev => prev.filter(user => user.id !== id));
       toast.success('Usuário excluído com sucesso!');
     } catch (err) {
       console.error('Erro ao excluir usuário:', err);
@@ -149,13 +153,25 @@ export const AdminUsers = () => {
           <h1 className="text-2xl font-bold text-gray-900">Usuários</h1>
           <p className="text-gray-500">Gerencie os usuários do sistema</p>
         </div>
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors"
-        >
-          <Plus className="h-5 w-5" />
-          Adicionar Usuário
-        </button>
+        <div className="space-x-4">
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className={`inline-flex items-center rounded-md border border-transparent px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+              refreshing ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Atualizar
+          </button>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors"
+          >
+            <Plus className="h-5 w-5" />
+            Adicionar Usuário
+          </button>
+        </div>
       </div>
 
       {error && (

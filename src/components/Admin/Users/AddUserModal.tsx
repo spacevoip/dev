@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, RefreshCw } from 'lucide-react';
+import { X, User, Mail, Phone, CreditCard, Shield, Key, RefreshCw } from 'lucide-react';
 import type { AdminUser, Plano } from '../../../types/admin';
 import { supabase } from '../../../lib/supabase';
 import bcrypt from 'bcryptjs';
 import { generateCNPJ } from '../../../utils/generateCNPJ';
+import { toast } from 'react-hot-toast';
 
 interface AddUserModalProps {
   isOpen: boolean;
@@ -22,10 +23,12 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onA
     role: 'user' as AdminUser['role'],
     accountid: '',
     limite: 0,
+    password: '',
+    status: 'ativo',
   });
 
   const generateAccountId = () => {
-    const random = Math.floor(1000 + Math.random() * 9000); // Gera número entre 1000 e 9999
+    const random = Math.floor(1000 + Math.random() * 9000);
     return `SPCVOIP${random}`;
   };
 
@@ -37,12 +40,12 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onA
         setPlanos(data || []);
       } catch (error) {
         console.error('Erro ao carregar planos:', error);
+        toast.error('Erro ao carregar planos');
       }
     };
 
     if (isOpen) {
       fetchPlanos();
-      // Gera um novo accountid quando o modal é aberto
       setFormData(prev => ({
         ...prev,
         accountid: generateAccountId()
@@ -70,202 +73,218 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onA
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Encrypt password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(formData.password, salt);
-    
-    onAdd({
-      ...formData,
-      password: hashedPassword
-    });
-    setFormData({
-      name: '',
-      email: '',
-      contato: '',
-      documento: '',
-      plano: '',
-      role: 'user',
-      accountid: '',
-      limite: 0,
-    });
+    try {
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(formData.password, salt);
+      
+      await onAdd({
+        ...formData,
+        password: hashedPassword
+      });
+
+      setFormData({
+        name: '',
+        email: '',
+        contato: '',
+        documento: '',
+        plano: '',
+        role: 'user',
+        accountid: '',
+        limite: 0,
+        password: '',
+        status: 'ativo',
+      });
+
+      toast.success('Usuário adicionado com sucesso!');
+      onClose();
+    } catch (error) {
+      console.error('Erro ao adicionar usuário:', error);
+      toast.error('Erro ao adicionar usuário');
+    }
   };
 
   if (!isOpen) return null;
 
-  return (
-    <>
-      <div className="fixed inset-0 bg-black/30" aria-hidden="true" onClick={onClose} />
-      
-      <div className="fixed inset-0 flex items-center justify-center p-4">
-        <div className="mx-auto max-w-lg w-full bg-white rounded-xl shadow-lg">
-          <div className="flex justify-between items-center p-6 border-b">
-            <h2 className="text-lg font-semibold">
-              Adicionar Novo Usuário
-            </h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-500"
-            >
-              <X className="h-5 w-5" />
-            </button>
+  const InputField = ({ 
+    id, 
+    label, 
+    type = 'text', 
+    value, 
+    onChange, 
+    icon: Icon,
+    placeholder = '',
+    required = false,
+    disabled = false,
+    rightElement = null
+  }) => (
+    <div className="relative">
+      <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
+        {label}
+      </label>
+      <div className="relative rounded-lg shadow-sm">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Icon className="h-5 w-5 text-gray-400" />
+        </div>
+        <input
+          type={type}
+          id={id}
+          value={value}
+          onChange={onChange}
+          className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-400 disabled:bg-gray-100 disabled:text-gray-500 transition duration-150 ease-in-out"
+          placeholder={placeholder}
+          required={required}
+          disabled={disabled}
+        />
+        {rightElement && (
+          <div className="absolute inset-y-0 right-0 flex items-center">
+            {rightElement}
           </div>
+        )}
+      </div>
+    </div>
+  );
 
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                Nome
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                required
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
-              />
-            </div>
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900">Adicionar Novo Usuário</h2>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1 text-gray-400 hover:text-gray-500 hover:bg-gray-100 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                required
-                value={formData.email}
-                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
-              />
-            </div>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <InputField
+            id="name"
+            label="Nome"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            icon={User}
+            placeholder="Nome completo"
+            required
+          />
 
-            <div>
-              <label htmlFor="contato" className="block text-sm font-medium text-gray-700">
-                Telefone/WhatsApp
-              </label>
-              <input
-                type="text"
-                id="contato"
-                name="contato"
-                value={formData.contato}
-                onChange={(e) => setFormData(prev => ({ ...prev, contato: e.target.value }))}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
-              />
-            </div>
+          <InputField
+            id="email"
+            label="Email"
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            icon={Mail}
+            placeholder="email@exemplo.com"
+            required
+          />
 
-            <div>
-              <label htmlFor="documento" className="block text-sm font-medium text-gray-700">
-                CPF/CNPJ
-              </label>
-              <div className="mt-1 flex gap-2">
-                <input
-                  type="text"
-                  id="documento"
-                  name="documento"
-                  value={formData.documento}
-                  onChange={(e) => setFormData(prev => ({ ...prev, documento: e.target.value }))}
-                  className="block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={handleGenerateCNPJ}
-                  className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  title="Gerar CNPJ"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </button>
+          <InputField
+            id="contato"
+            label="Telefone/WhatsApp"
+            value={formData.contato}
+            onChange={(e) => setFormData({ ...formData, contato: e.target.value })}
+            icon={Phone}
+            placeholder="(00) 00000-0000"
+          />
+
+          <InputField
+            id="documento"
+            label="CPF/CNPJ"
+            value={formData.documento}
+            onChange={(e) => setFormData({ ...formData, documento: e.target.value })}
+            icon={CreditCard}
+            placeholder="000.000.000-00"
+            rightElement={
+              <button
+                type="button"
+                onClick={handleGenerateCNPJ}
+                className="px-3 py-2 text-gray-400 hover:text-gray-500"
+                title="Gerar CNPJ"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </button>
+            }
+          />
+
+          <InputField
+            id="password"
+            label="Senha"
+            type="password"
+            value={formData.password}
+            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            icon={Key}
+            placeholder="••••••••"
+            required
+          />
+
+          <div className="space-y-1">
+            <label htmlFor="plano" className="block text-sm font-medium text-gray-700">
+              Plano
+            </label>
+            <div className="relative rounded-lg shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Shield className="h-5 w-5 text-gray-400" />
               </div>
-            </div>
-
-            <div>
-              <label htmlFor="plano" className="block text-sm font-medium text-gray-700">
-                Plano
-              </label>
               <select
                 id="plano"
-                name="plano"
-                required
                 value={planos.find(p => p.nome === formData.plano)?.id || ''}
                 onChange={handlePlanoChange}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                required
               >
                 <option value="">Selecione um plano</option>
-                {planos.map(plano => (
+                {planos.map((plano) => (
                   <option key={plano.id} value={plano.id}>
                     {plano.nome}
                   </option>
                 ))}
               </select>
             </div>
+          </div>
 
-            <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                Role
-              </label>
+          <div className="space-y-1">
+            <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+              Status
+            </label>
+            <div className="relative rounded-lg shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Shield className="h-5 w-5 text-gray-400" />
+              </div>
               <select
-                id="role"
-                name="role"
+                id="status"
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                 required
-                value={formData.role}
-                onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
               >
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
+                <option value="ativo">Ativo</option>
+                <option value="inativo">Inativo</option>
+                <option value="suspenso">Suspenso</option>
               </select>
             </div>
+          </div>
 
-            <div>
-              <label htmlFor="accountid" className="block text-sm font-medium text-gray-700">
-                Account ID
-              </label>
-              <input
-                type="text"
-                id="accountid"
-                name="accountid"
-                required
-                value={formData.accountid}
-                readOnly
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-gray-50 focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="limite" className="block text-sm font-medium text-gray-700">
-                Limite
-              </label>
-              <input
-                type="number"
-                id="limite"
-                name="limite"
-                required
-                min="0"
-                value={formData.limite}
-                readOnly
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-gray-50 focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
-              />
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                Adicionar
-              </button>
-            </div>
-          </form>
-        </div>
+          {/* Footer */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            >
+              Adicionar
+            </button>
+          </div>
+        </form>
       </div>
-    </>
+    </div>
   );
 };

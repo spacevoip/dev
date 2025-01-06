@@ -18,58 +18,61 @@ export function useExtensionsCount() {
     error: null
   });
 
-  useEffect(() => {
-    async function fetchData() {
-      if (!user?.accountid) {
-        setInfo(prev => ({ ...prev, loading: false }));
-        return;
-      }
-
-      try {
-        // Busca o plano do usuário
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('plano')
-          .eq('accountid', user.accountid)
-          .single();
-
-        if (userError) throw userError;
-
-        // Busca o limite do plano
-        const { data: planData, error: planError } = await supabase
-          .from('planos')
-          .select('limite')
-          .eq('nome', userData.plano)
-          .single();
-
-        if (planError) throw planError;
-
-        // Conta quantos ramais o usuário tem usando o accountid
-        const { count: extensionsCount, error: extensionsError } = await supabase
-          .from('extensions')
-          .select('*', { count: 'exact' })
-          .eq('accountid', user.accountid);
-
-        if (extensionsError) throw extensionsError;
-
-        setInfo({
-          currentCount: extensionsCount || 0,
-          planLimit: planData.limite,
-          loading: false,
-          error: null
-        });
-
-      } catch (err) {
-        console.error('Erro ao buscar informações dos ramais:', err);
-        setInfo(prev => ({
-          ...prev,
-          loading: false,
-          error: 'Erro ao carregar informações dos ramais'
-        }));
-      }
+  const fetchData = async () => {
+    if (!user?.accountid) {
+      setInfo(prev => ({ ...prev, loading: false }));
+      return;
     }
 
-    fetchData();
+    try {
+      // Busca o plano do usuário
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('plano')
+        .eq('accountid', user.accountid)
+        .single();
+
+      if (userError) throw userError;
+
+      // Busca o limite do plano
+      const { data: planData, error: planError } = await supabase
+        .from('planos')
+        .select('limite')
+        .eq('nome', userData.plano)
+        .single();
+
+      if (planError) throw planError;
+
+      // Conta quantos ramais o usuário tem usando o accountid
+      const { count: extensionsCount, error: extensionsError } = await supabase
+        .from('extensions')
+        .select('*', { count: 'exact' })
+        .eq('accountid', user.accountid);
+
+      if (extensionsError) throw extensionsError;
+
+      setInfo({
+        currentCount: extensionsCount || 0,
+        planLimit: planData.limite,
+        loading: false,
+        error: null
+      });
+
+    } catch (err) {
+      console.error('Erro ao buscar informações dos ramais:', err);
+      setInfo(prev => ({
+        ...prev,
+        loading: false,
+        error: 'Erro ao carregar informações dos ramais'
+      }));
+    }
+  };
+
+  useEffect(() => {
+    fetchData(); // Busca inicial
+
+    // Atualiza a cada 5 segundos
+    const intervalId = setInterval(fetchData, 5000);
 
     // Inscreve para atualizações na tabela extensions usando accountid
     const extensionsSubscription = supabase
@@ -87,7 +90,9 @@ export function useExtensionsCount() {
       )
       .subscribe();
 
+    // Cleanup: remove o intervalo e cancela a subscription
     return () => {
+      clearInterval(intervalId);
       extensionsSubscription.unsubscribe();
     };
   }, [user?.accountid]); // Dependência mudada para accountid
