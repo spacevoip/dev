@@ -2,11 +2,12 @@ import axios from 'axios';
 import CryptoJS from 'crypto-js';
 
 const api = axios.create({
-  baseURL: 'http://91.108.125.149:5000'
+  baseURL: import.meta.env.VITE_API_URL || 'http://91.108.125.149:5000',
+  withCredentials: true // Habilitando cookies cross-origin
 });
 
 // Chave secreta para criptografia (mova para .env em produção)
-const SECRET_KEY = 'your-secret-key-123';
+const SECRET_KEY = import.meta.env.VITE_SECRET_KEY || 'your-secret-key-123';
 
 // Função para gerar um timestamp aleatório
 const getRandomTimestamp = () => {
@@ -49,49 +50,41 @@ const userAgents = [
 ];
 
 // Interceptor para todas as requisições
-api.interceptors.request.use((config) => {
-  const timestamp = getRandomTimestamp();
-  const requestId = generateRequestId();
+api.interceptors.request.use(
+  (config) => {
+    // Adiciona timestamp e request ID
+    const timestamp = getRandomTimestamp();
+    const requestId = generateRequestId();
+    
+    // Adiciona headers de segurança
+    config.headers['X-Request-Time'] = timestamp;
+    config.headers['X-Request-ID'] = requestId;
+    config.headers['X-Requested-With'] = 'XMLHttpRequest';
+    config.headers['Accept'] = 'application/json';
+    config.headers['User-Agent'] = userAgents[Math.floor(Math.random() * userAgents.length)];
 
-  // Adiciona parâmetros aleatórios
-  config.params = { 
-    _t: timestamp,
-    _r: requestId,
-    _v: Math.random().toString(36).substring(7)
-  };
+    // Se for uma requisição POST, criptografa o body
+    if (config.data) {
+      config.data = {
+        encryptedData: encryptData(config.data)
+      };
+    }
 
-  // Codifica o endpoint
-  if (config.url) {
-    config.url = encodeEndpoint(config.url);
+    return config;
+  },
+  (error) => {
+    console.error('Request error:', error);
+    return Promise.reject(error);
   }
-
-  // Criptografa o corpo da requisição se existir
-  if (config.data) {
-    config.data = encryptData(config.data);
-  }
-
-  // Adiciona headers que simulam navegação normal
-  config.headers['User-Agent'] = userAgents[Math.floor(Math.random() * userAgents.length)];
-  config.headers['X-Requested-With'] = 'XMLHttpRequest';
-  config.headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8';
-  config.headers['Accept-Language'] = 'en-US,en;q=0.5';
-  config.headers['Cache-Control'] = 'no-cache';
-  config.headers['Pragma'] = 'no-cache';
-  config.headers['X-Request-ID'] = requestId;
-  config.headers['Sec-Fetch-Dest'] = 'document';
-  config.headers['Sec-Fetch-Mode'] = 'navigate';
-  config.headers['Sec-Fetch-Site'] = 'same-origin';
-  
-  return config;
-});
+);
 
 // Interceptor para todas as respostas
 api.interceptors.response.use(
   (response) => {
     // Descriptografa a resposta se necessário
-    if (response.data && typeof response.data === 'string') {
+    if (response.data && response.data.encryptedData) {
       try {
-        response.data = decryptData(response.data);
+        response.data = decryptData(response.data.encryptedData);
       } catch (e) {
         // Se não conseguir descriptografar, retorna os dados originais
       }
