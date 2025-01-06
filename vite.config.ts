@@ -28,14 +28,13 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
-      outDir: 'dist',
-      sourcemap: true,
       rollupOptions: {
         output: {
           manualChunks: {
             react: ['react', 'react-dom'],
             router: ['react-router-dom'],
-            ui: ['@headlessui/react', '@heroicons/react'],
+            ui: ['@headlessui/react'],
+            icons: ['@heroicons/react'],
             charts: ['recharts'],
           },
         },
