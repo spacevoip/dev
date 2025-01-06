@@ -35,7 +35,7 @@ export function Sidebar() {
 
   // Adiciona o botão de admin no menu se o usuário for admin
   if (userData?.role === 'admin') {
-    menuItems.push({ icon: Shield, label: 'Painel Admin', path: '/admin' });
+    menuItems.push({ icon: Shield, label: 'Admin Panel', path: '/admin' });
   }
 
   return (
@@ -60,7 +60,9 @@ export function Sidebar() {
             <div>
               <h3 className="font-medium">{userData.name || 'Space Brasil'}</h3>
               <p className="text-sm text-gray-300">{userData.email || 'space@space.com'}</p>
-              <p className="text-xs text-gray-400">Sip Trial</p>
+              <p className="text-xs text-gray-400">
+                {userData.role === 'admin' ? 'Administrator' : 'User'}
+              </p>
             </div>
           </div>
         </div>
@@ -98,12 +100,17 @@ export function Sidebar() {
               <CreditCard className="h-5 w-5" />
               <span className="text-sm">Saldo Disponível</span>
             </div>
-            <button className="p-1 hover:bg-white/10 rounded-full">
+            <button 
+              onClick={() => window.location.reload()} 
+              className="p-1 hover:bg-white/10 rounded-full"
+              title="Atualizar saldo"
+            >
               <RefreshCw className="h-4 w-4" />
             </button>
           </div>
-          <p className="text-2xl font-bold">R$ 1.250,00</p>
-          <p className="text-xs text-gray-400">Atualizado: 11:27:07</p>
+          <div className="text-2xl font-bold">
+            {formatCurrency(userData?.balance || 0)}
+          </div>
         </div>
       </div>
 
