@@ -6,6 +6,7 @@ import { ProtectedRoute } from './components/Auth/ProtectedRoute';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/react-query';
 import { RootLayout } from './components/Layout/RootLayout';
+import { usePreventRefresh } from './hooks/usePreventRefresh';
 
 // Pages
 import { Login } from './pages/Login';
@@ -33,46 +34,54 @@ import { CallHistory } from './pages/admin/CallHistory';
 import { AdminExtensions } from './pages/admin/Extensions';
 import { AdminCallerIDBlock } from './pages/admin/CallerIDBlock';
 
+function AppContent() {
+  usePreventRefresh();
+
+  return (
+    <RootLayout>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        
+        <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+          <Route index element={<Navigate to="/dash" replace />} />
+          <Route path="dash" element={<Dashboard />} />
+          <Route path="extensions" element={<Extensions />} />
+          <Route path="queues" element={<Queues />} />
+          <Route path="calls" element={<Calls />} />
+          <Route path="history" element={<History />} />
+          <Route path="did" element={<DID />} />
+          <Route path="recharge" element={<Recharge />} />
+          <Route path="subscriptions" element={<Subscriptions />} />
+          <Route path="plans" element={<Plans />} />
+          <Route path="settings" element={<Settings />} />
+        </Route>
+
+        <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminLayout /></ProtectedRoute>}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="instances" element={<AdminInstances />} />
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="extensions" element={<AdminExtensions />} />
+          <Route path="calleridblock" element={<AdminCallerIDBlock />} />
+          <Route path="call-history" element={<CallHistory />} />
+          <Route path="settings" element={<AdminSettings />} />
+          <Route path="plans" element={<AdminPlans />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </RootLayout>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <RealtimeProvider>
           <BrowserRouter>
-            <RootLayout>
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                
-                <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-                  <Route index element={<Navigate to="/dash" replace />} />
-                  <Route path="dash" element={<Dashboard />} />
-                  <Route path="extensions" element={<Extensions />} />
-                  <Route path="queues" element={<Queues />} />
-                  <Route path="calls" element={<Calls />} />
-                  <Route path="history" element={<History />} />
-                  <Route path="did" element={<DID />} />
-                  <Route path="recharge" element={<Recharge />} />
-                  <Route path="subscriptions" element={<Subscriptions />} />
-                  <Route path="plans" element={<Plans />} />
-                  <Route path="settings" element={<Settings />} />
-                </Route>
-
-                <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminLayout /></ProtectedRoute>}>
-                  <Route index element={<Navigate to="dashboard" replace />} />
-                  <Route path="dashboard" element={<AdminDashboard />} />
-                  <Route path="instances" element={<AdminInstances />} />
-                  <Route path="users" element={<AdminUsers />} />
-                  <Route path="extensions" element={<AdminExtensions />} />
-                  <Route path="calleridblock" element={<AdminCallerIDBlock />} />
-                  <Route path="call-history" element={<CallHistory />} />
-                  <Route path="settings" element={<AdminSettings />} />
-                  <Route path="plans" element={<AdminPlans />} />
-                </Route>
-
-                <Route path="*" element={<Navigate to="/login" replace />} />
-              </Routes>
-            </RootLayout>
+            <AppContent />
           </BrowserRouter>
         </RealtimeProvider>
       </AuthProvider>
