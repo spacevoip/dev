@@ -42,15 +42,22 @@ export function useActiveCalls() {
     try {
       console.log('Tentando buscar chamadas de:', `${API_URL}/active-calls`);
       
-      // Busca as chamadas da API com timeout de 5 segundos
+      // Busca as chamadas da API com timeout de 10 segundos
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
       
       const response = await fetch(`${API_URL}/active-calls`, {
         signal: controller.signal,
+        mode: 'cors',
+        credentials: 'omit',
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
         }
       });
       
@@ -59,7 +66,8 @@ export function useActiveCalls() {
       if (!response.ok) {
         console.error('Erro na resposta da API:', {
           status: response.status,
-          statusText: response.statusText
+          statusText: response.statusText,
+          url: response.url
         });
         return [];
       }

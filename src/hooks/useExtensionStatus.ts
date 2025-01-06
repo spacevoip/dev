@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { ExtensionStatusResponse } from '../types/extensionStatus';
 
 interface ExtensionStatus {
   agent_name: string;
@@ -17,7 +18,20 @@ export const useExtensionStatus = () => {
 
   const fetchExtensionStatus = async () => {
     try {
-      const response = await fetch('https://91.108.125.149:5000/list-extensions');
+      const response = await fetch('https://91.108.125.149:5000/list-extensions', {
+        mode: 'cors',
+        credentials: 'omit',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+
       if (!response.ok) {
         throw new Error('Failed to fetch extension status');
       }
@@ -48,5 +62,9 @@ export const useExtensionStatus = () => {
     return () => clearInterval(intervalId);
   }, []);
 
-  return { extensionStatuses, error };
+  return {
+    extensionStatuses,
+    error,
+    fetchExtensionStatus
+  };
 };
