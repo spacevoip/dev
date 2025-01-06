@@ -3,8 +3,10 @@ import { useAuth } from '../contexts/AuthContext';
 import type { ActiveCall, CallsResponse } from '../types/activeCalls';
 import { supabase } from '../lib/supabase';
 
-// Usando a variável de ambiente do Vite
-const API_URL = import.meta.env.VITE_API_URL?.replace(/^http:/, 'https:').replace(/\/$/, '');
+// Usando a variável de ambiente do Vite e forçando HTTPS
+const API_URL = (import.meta.env.VITE_API_URL || 'https://91.108.125.149:5000')
+  .replace(/^http:/, 'https:')
+  .replace(/\/$/, '');
 
 // Função auxiliar para extrair o ramal do Channel
 function extractRamal(channel: string): string {
@@ -24,6 +26,9 @@ function translateState(state: string): string {
   }
 }
 
+// Função para garantir HTTPS na URL
+const ensureHttps = (url: string) => url.replace(/^http:/, 'https:');
+
 export function useActiveCalls() {
   const { user } = useAuth();
   const accountId = user?.accountid;
@@ -40,13 +45,14 @@ export function useActiveCalls() {
     }
 
     try {
-      console.log('Tentando buscar chamadas de:', `${API_URL}/active-calls`);
+      const apiUrl = ensureHttps(`${API_URL}/active-calls`);
+      console.log('Tentando buscar chamadas de:', apiUrl);
       
       // Busca as chamadas da API com timeout de 10 segundos
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
       
-      const response = await fetch(`${API_URL}/active-calls`, {
+      const response = await fetch(apiUrl, {
         signal: controller.signal,
         mode: 'cors',
         credentials: 'omit',
