@@ -24,7 +24,7 @@ export const useCallsStats = (accountcode: string) => {
     const fetchStats = async () => {
       try {
         // Busca chamadas ativas
-        const activeCallsResponse = await fetch('http://91.108.125.149:5000/active-calls');
+        const activeCallsResponse = await fetch('https://91.108.125.149:5000/active-calls');
         const activeCallsData = await activeCallsResponse.json();
 
         // Filtra chamadas ativas pelo accountcode
@@ -35,7 +35,7 @@ export const useCallsStats = (accountcode: string) => {
         ).length;
 
         // Busca ramais usando a rota correta
-        const extensionsResponse = await fetch('http://91.108.125.149:5000/extension-status');
+        const extensionsResponse = await fetch('https://91.108.125.149:5000/extension-status');
         const extensionsData = await extensionsResponse.json();
         
         // Filtra ramais online pelo accountcode

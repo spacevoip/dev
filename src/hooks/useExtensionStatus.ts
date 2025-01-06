@@ -17,7 +17,7 @@ export const useExtensionStatus = () => {
 
   const fetchExtensionStatus = async () => {
     try {
-      const response = await fetch('http://91.108.125.149:5000/list-extensions');
+      const response = await fetch('https://91.108.125.149:5000/list-extensions');
       if (!response.ok) {
         throw new Error('Failed to fetch extension status');
       }

@@ -13,7 +13,7 @@ export const ActiveCallsTable: React.FC<ActiveCallsTableProps> = ({ calls }) => 
   const handleHangupCall = async (channel: string) => {
     try {
       console.log('Desligando chamada:', channel); // Debug
-      const response = await fetch('http://91.108.125.149:5000/hangup-call', {
+      const response = await fetch('https://91.108.125.149:5000/hangup-call', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
