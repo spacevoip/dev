@@ -4,7 +4,7 @@ import type { ActiveCall, CallsResponse } from '../types/activeCalls';
 import { supabase } from '../lib/supabase';
 
 // Usando a variável de ambiente do Vite
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, '');
 
 // Função auxiliar para extrair o ramal do Channel
 function extractRamal(channel: string): string {
@@ -30,43 +30,68 @@ export function useActiveCalls() {
 
   const fetchCalls = async () => {
     if (!accountId) {
+      console.log('Nenhum accountId disponível');
+      return [];
+    }
+
+    if (!API_URL) {
+      console.error('VITE_API_URL não está configurada');
       return [];
     }
 
     try {
-      // Busca as chamadas da API
-      const response = await fetch(`${API_URL}/active-calls`);
+      console.log('Tentando buscar chamadas de:', `${API_URL}/active-calls`);
+      
+      // Busca as chamadas da API com timeout de 5 segundos
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      const response = await fetch(`${API_URL}/active-calls`, {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        console.error('Erro na resposta da API:', response.statusText);
-        throw new Error('Erro ao buscar chamadas');
+        console.error('Erro na resposta da API:', {
+          status: response.status,
+          statusText: response.statusText
+        });
+        return [];
       }
       
       const data = await response.json() as CallsResponse;
+      console.log('Dados recebidos da API:', data);
+
       if (!data || !data.active_calls) {
         console.error('Dados inválidos da API:', data);
-        throw new Error('Dados inválidos da API');
+        return [];
       }
 
       // Filtra e processa as chamadas
       const processedCalls = data.active_calls
         .filter(call => {
-          // Filtra apenas chamadas:
-          // 1. Do accountid do usuário
-          // 2. Com State Ring ou Up
-          return call.Accountcode === accountId && ['Ring', 'Up'].includes(call.State);
+          const isValid = call.Accountcode === accountId && ['Ring', 'Up'].includes(call.State);
+          if (!isValid) {
+            console.log('Chamada filtrada:', { call, accountId });
+          }
+          return isValid;
         })
-        .map(call => {
-          console.log('Channel da API:', call.Channel); // Debug
-          return {
-            id: crypto.randomUUID(),
-            callerid: call.CallerID,
-            duracao: call.Duration,
-            destino: call.Extension,
-            status: translateState(call.State),
-            ramal: extractRamal(call.Channel),
-            channel: call.Channel,
-          };
-        });
+        .map(call => ({
+          id: crypto.randomUUID(),
+          callerid: call.CallerID,
+          duracao: call.Duration,
+          destino: call.Extension,
+          status: translateState(call.State),
+          ramal: extractRamal(call.Channel),
+          channel: call.Channel,
+        }));
+
+      console.log('Chamadas processadas:', processedCalls);
 
       // Salva as chamadas no banco
       if (processedCalls.length > 0) {
@@ -83,8 +108,11 @@ export function useActiveCalls() {
 
       return processedCalls;
     } catch (error) {
-      console.error('Erro ao buscar chamadas:', error);
-      // Retorna array vazio em caso de erro para não quebrar a UI
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        console.error('Timeout ao buscar chamadas');
+      } else {
+        console.error('Erro ao buscar chamadas:', error);
+      }
       return [];
     }
   };
@@ -92,11 +120,12 @@ export function useActiveCalls() {
   return useQuery({
     queryKey: ['active-calls', accountId],
     queryFn: fetchCalls,
-    refetchInterval: 5000, // Atualiza a cada 5 segundos
-    enabled: !!accountId,
-    retry: 3, // Tenta 3 vezes antes de falhar
-    retryDelay: 1000, // Espera 1 segundo entre as tentativas
-    staleTime: 2000, // Considera os dados frescos por 2 segundos
-    cacheTime: 0, // Não mantém cache entre refetches
+    refetchInterval: 5000,
+    enabled: !!accountId && !!API_URL,
+    retry: 1,
+    retryDelay: 1000,
+    staleTime: 2000,
+    cacheTime: 0,
+    refetchOnWindowFocus: false,
   });
 }
