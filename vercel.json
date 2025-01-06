@@ -2,14 +2,17 @@
   "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "http://91.108.125.149:5000/:path*"
+    }
+  ],
   "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "http://91.108.125.149:5000/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+    { 
+      "src": "/[^.]+", 
+      "dest": "/", 
+      "status": 200
     }
   ],
   "headers": [
@@ -34,7 +37,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self' http://91.108.125.149:5000; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: http://91.108.125.149:5000; font-src 'self' data:; connect-src 'self' http://91.108.125.149:5000;"
+          "value": "default-src 'self' http://91.108.125.149:5000; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: http://91.108.125.149:5000; font-src 'self' data:; connect-src 'self' http://91.108.125.149:5000 ws://91.108.125.149:5000;"
         },
         {
           "key": "Access-Control-Allow-Origin",

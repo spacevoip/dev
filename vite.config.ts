@@ -21,22 +21,26 @@ export default defineConfig({
             pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.warn'],
           },
           mangle: {
-            properties: true,
+            properties: false, // Mudado para false para evitar problemas com minificação
           },
         }),
       ],
     },
     minify: 'terser',
     sourcemap: false,
+    outDir: 'dist',
+    assetsDir: 'assets',
+    emptyOutDir: true,
+    cssCodeSplit: true,
+    chunkSizeWarningLimit: 1000,
   },
   server: {
-    headers: {
-      'X-Frame-Options': 'DENY',
-      'X-Content-Type-Options': 'nosniff',
-      'X-XSS-Protection': '1; mode=block',
+    proxy: {
+      '/api': {
+        target: 'http://91.108.125.149:5000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
     },
-  },
-  optimizeDeps: {
-    exclude: ['lucide-react'],
   },
 });
