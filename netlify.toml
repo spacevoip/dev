@@ -12,6 +12,7 @@
 [build.environment]
   NODE_VERSION = "18"
   VITE_API_URL = "http://91.108.125.149:5000"
+  VITE_SECRET_KEY = "inovavoip-secure-key-2024"
 
 [[headers]]
   for = "/*"
@@ -20,4 +21,7 @@
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "no-referrer"
-    Content-Security-Policy = "default-src 'self' http://91.108.125.149:5000; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
+    Content-Security-Policy = "default-src 'self' http://91.108.125.149:5000; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: http://91.108.125.149:5000; font-src 'self' data:; connect-src 'self' http://91.108.125.149:5000;"
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Origin, X-Requested-With, Content-Type, Accept, Authorization"
