@@ -1,76 +1,51 @@
 import React, { useState, useEffect } from 'react';
-import { UsersList } from '../../components/Admin/Users/UsersList';
-import { Plus, RefreshCw } from 'lucide-react';
-import type { AdminUser } from '../../types/admin';
+import { Plus, RefreshCw, Search } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { AddUserModal } from '../../components/Admin/Users/AddUserModal';
 import { toast } from 'react-hot-toast';
+import { UsersTable } from '../../components/Admin/Users/UsersTable';
+import { UserEditModal } from '../../components/Admin/Users/UserEditModal';
+import { AddUserModal } from '../../components/Admin/Users/AddUserModal';
 
-const mockUsers: AdminUser[] = [
-  {
-    id: '1',
-    name: 'John Doe',
-    email: 'john@example.com',
-    role: 'admin',
-    lastLogin: new Date(Date.now() - 3600000),
-  },
-  {
-    id: '2',
-    name: 'Jane Smith',
-    email: 'jane@example.com',
-    role: 'support',
-    lastLogin: new Date(Date.now() - 7200000),
-  },
-  {
-    id: '3',
-    name: 'Bob Wilson',
-    email: 'bob@example.com',
-    role: 'viewer',
-    lastLogin: new Date(Date.now() - 86400000),
-  },
-];
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  contato: string;
+  accountid: string;
+  plano: string;
+  created_at: string;
+  last_login?: string;
+  documento?: string;
+  status?: string;
+}
 
 export const AdminUsers = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Primeiro buscar todos os planos
-      const { data: planos } = await supabase
-        .from('planos')
-        .select('*');
-
-      console.log('Planos:', planos); // Log para ver os planos
-
-      // Depois buscar os usuários
+      // Buscar usuários
       const { data: users, error: usersError } = await supabase
         .from('users')
         .select('*')
         .order('name');
 
-      console.log('Users:', users); // Log para ver os usuários
-
       if (usersError) {
         throw usersError;
       }
 
-      if (users && planos) {
-        const formattedUsers = users.map(user => {
-          const userPlano = planos.find(p => p.nome === user.plano);
-          console.log(`User ${user.name} has plano ${user.plano}, found plano:`, userPlano); // Log para debug
-          return {
-            ...user,
-            limite: userPlano?.limite || 0
-          };
-        });
-        setUsers(formattedUsers);
+      if (users) {
+        setUsers(users);
       }
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -82,116 +57,142 @@ export const AdminUsers = () => {
     }
   };
 
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchUsers();
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  const handleEditUser = (user: AdminUser) => {
+    setSelectedUser(user);
+    setIsEditModalOpen(true);
+  };
 
-  const handleAddUser = async (userData: Omit<AdminUser, 'id' | 'last_login' | 'created_at'>) => {
+  const handleUpdateUser = async (updatedUser: Partial<AdminUser>) => {
+    if (!selectedUser) return;
+
     try {
       const { data, error } = await supabase
         .from('users')
-        .insert([{ ...userData, status: 'ativo' }])
+        .update(updatedUser)
+        .eq('id', selectedUser.id)
         .select()
         .single();
 
       if (error) throw error;
 
-      setUsers(prev => [...prev, data]);
-      setIsAddModalOpen(false);
-      toast.success('Usuário adicionado com sucesso!');
-    } catch (err) {
-      console.error('Erro ao adicionar usuário:', err);
-      toast.error('Erro ao adicionar usuário. Tente novamente.');
-    }
-  };
-
-  const handleEditUser = async (userData: any) => {
-    try {
-      const { error } = await supabase
-        .from('users')
-        .update(userData)
-        .eq('id', userData.id);
-
-      if (error) throw error;
-
-      setUsers(prev =>
-        prev.map(user => (user.id === userData.id ? { ...user, ...userData } : user))
+      // Atualiza a lista de usuários
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.id === selectedUser.id ? { ...user, ...updatedUser } : user
+        )
       );
+
       toast.success('Usuário atualizado com sucesso!');
-    } catch (err) {
-      console.error('Erro ao atualizar usuário:', err);
-      toast.error('Erro ao atualizar usuário. Tente novamente.');
+      setIsEditModalOpen(false);
+    } catch (error) {
+      console.error('Erro ao atualizar usuário:', error);
+      toast.error('Erro ao atualizar usuário');
     }
   };
 
-  const handleDeleteUser = async (id: string) => {
+  const handleAddUser = async (userData: any) => {
     try {
-      const { error } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setUsers(prev => prev.filter(user => user.id !== id));
-      toast.success('Usuário excluído com sucesso!');
-    } catch (err) {
-      console.error('Erro ao excluir usuário:', err);
-      toast.error('Erro ao excluir usuário. Tente novamente.');
+      // Atualiza a lista de usuários com o novo usuário
+      setUsers(prevUsers => [...prevUsers, userData]);
+      setIsAddModalOpen(false);
+    } catch (error) {
+      console.error('Erro ao adicionar usuário:', error);
+      toast.error('Erro ao adicionar usuário');
     }
   };
+
+  const filteredUsers = users.filter(user => 
+    user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.contato?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.accountid?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-indigo-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+        {error}
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Usuários</h1>
-          <p className="text-gray-500">Gerencie os usuários do sistema</p>
-        </div>
-        <div className="space-x-4">
-          <button
+    <div className="p-6 bg-gray-100 min-h-screen">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">Usuários</h1>
+        <div className="flex space-x-4">
+          <button 
             onClick={handleRefresh}
             disabled={refreshing}
-            className={`inline-flex items-center rounded-md border border-transparent px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-              refreshing ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
+            className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition disabled:opacity-50"
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Atualizar
+            <RefreshCw className="mr-2 h-5 w-5" />
+            {refreshing ? 'Atualizando...' : 'Atualizar'}
           </button>
-          <button
+          <button 
             onClick={() => setIsAddModalOpen(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors"
+            className="flex items-center px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition"
           >
-            <Plus className="h-5 w-5" />
+            <Plus className="mr-2 h-5 w-5" />
             Adicionar Usuário
           </button>
         </div>
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-          {error}
-        </div>
+      {/* Campo de Pesquisa */}
+      <div className="relative max-w-md mb-6">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Buscar por nome, email, contato ou account ID..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+        />
+      </div>
+
+      {/* Contador de Resultados */}
+      <div className="text-sm text-gray-500 mb-6">
+        Exibindo {filteredUsers.length} usuários de {users.length}
+      </div>
+
+      <UsersTable 
+        users={filteredUsers} 
+        onEdit={handleEditUser}
+      />
+
+      {isAddModalOpen && (
+        <AddUserModal 
+          isOpen={true}
+          onClose={() => setIsAddModalOpen(false)}
+          onAdd={handleAddUser}
+        />
       )}
 
-      <UsersList 
-        users={users} 
-        loading={loading}
-        onEdit={handleEditUser}
-        onDelete={handleDeleteUser}
-      />
-
-      <AddUserModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onAdd={handleAddUser}
-      />
+      {isEditModalOpen && selectedUser && (
+        <UserEditModal 
+          user={selectedUser}
+          onClose={() => setIsEditModalOpen(false)}
+          onUpdate={handleUpdateUser}
+        />
+      )}
     </div>
   );
 };

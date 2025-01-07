@@ -1,7 +1,6 @@
 import React from 'react';
 import { Logo } from './Logo';
 import { Navigation } from './Navigation';
-import { CreditBalance } from './CreditBalance';
 import { CollapseButton } from './CollapseButton';
 import { AccountUser } from './AccountUser';
 import { LogoutButton } from './LogoutButton';
@@ -17,12 +16,18 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
 
   return (
     <aside 
-      className={`relative h-full bg-gradient-to-b from-indigo-950 via-indigo-900 to-violet-900 text-white flex flex-col shadow-xl transition-all duration-300 ease-in-out ${
-        isCollapsed ? 'w-20 p-4' : 'w-72 p-6'
-      }`}
+      className={`
+        relative h-full bg-gradient-to-b from-indigo-950 via-indigo-900 to-violet-900 
+        text-white flex flex-col shadow-xl transition-all duration-300 ease-in-out
+        ${isCollapsed ? 'w-20 p-4' : 'w-72 p-6'}
+        max-h-screen overflow-hidden
+      `}
     >
-      <div className="flex items-center justify-between mb-8">
-        <Logo />
+      {/* Header com Logo e Botão Fechar */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex-shrink-0">
+          <Logo />
+        </div>
         <button
           onClick={onClose}
           className="lg:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
@@ -32,19 +37,26 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         </button>
       </div>
       
-      <div className="flex-1 flex flex-col min-h-0">
-        <AccountUser />
-        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+      {/* Conteúdo Principal */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        {/* Informações do Usuário */}
+        <div className="flex-shrink-0 mb-4">
+          <AccountUser />
+        </div>
+
+        {/* Menu de Navegação com Scroll */}
+        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent pr-2">
           <Navigation />
         </div>
         
-        <div className="mt-auto space-y-4 pt-4">
-          <CreditBalance />
+        {/* Rodapé Fixo */}
+        <div className="flex-shrink-0 mt-4 space-y-4 pt-4 border-t border-white/10">
           <LogoutButton />
         </div>
       </div>
 
-      <div className="hidden lg:block">
+      {/* Botão de Colapso (apenas desktop) */}
+      <div className="hidden lg:block mt-4">
         <CollapseButton />
       </div>
     </aside>

@@ -1,6 +1,7 @@
 import React from 'react';
-import { useLocation } from 'react-router-dom';
-import {
+import { Link, useLocation } from 'react-router-dom';
+import { useSidebar } from './SidebarContext';
+import { 
   LayoutDashboard,
   Users,
   PhoneCall,
@@ -11,8 +12,6 @@ import {
   Ticket,
   ListOrdered,
 } from 'lucide-react';
-import { MenuItem } from './MenuItem';
-import { useSidebar } from './SidebarContext';
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Painel', path: '/dash' },
@@ -31,14 +30,32 @@ export const Navigation: React.FC = () => {
   const { isCollapsed } = useSidebar();
   
   return (
-    <nav className={`space-y-2.5 ${isCollapsed ? 'px-2' : ''}`}>
-      {menuItems.map((item) => (
-        <MenuItem
-          key={item.path}
-          {...item}
-          isActive={location.pathname === item.path}
-        />
-      ))}
+    <nav className="space-y-2">
+      {menuItems.map((item) => {
+        const Icon = item.icon;
+        const isActive = location.pathname === item.path;
+        
+        return (
+          <Link
+            key={item.path}
+            to={item.path}
+            className={`
+              flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200
+              ${isActive 
+                ? 'bg-white/20 text-white font-medium' 
+                : 'text-white/70 hover:bg-white/10 hover:text-white'
+              }
+              ${isCollapsed ? 'justify-center' : ''}
+            `}
+            title={isCollapsed ? item.label : undefined}
+          >
+            <Icon className={`flex-shrink-0 ${isCollapsed ? 'h-6 w-6' : 'h-5 w-5'}`} />
+            {!isCollapsed && (
+              <span className="truncate">{item.label}</span>
+            )}
+          </Link>
+        );
+      })}
     </nav>
   );
 };

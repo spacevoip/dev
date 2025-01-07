@@ -18,7 +18,7 @@ export const LogoutButton: React.FC = () => {
       className="flex items-center gap-3 p-3 text-indigo-200 hover:text-white hover:bg-white/10 rounded-xl transition-colors"
     >
       <LogOut className="h-5 w-5" />
-      <span>Logout</span>
+      <span>Sair</span>
     </button>
   );
 };

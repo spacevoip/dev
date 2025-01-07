@@ -51,22 +51,18 @@ async function isAccountIdUnique(accountId: string): Promise<boolean> {
 }
 
 // Função para gerar um accountId único
-async function generateUniqueAccountId(): Promise<string> {
-  let accountId = generateAccountId();
-  let isUnique = await isAccountIdUnique(accountId);
-  
-  // Tenta até 10 vezes para evitar loop infinito
-  let attempts = 0;
-  while (!isUnique && attempts < 10) {
+export async function generateUniqueAccountId(): Promise<string> {
+  let accountId: string;
+  let isUnique = false;
+
+  while (!isUnique) {
+    // Gera um novo accountId
     accountId = generateAccountId();
+
+    // Verifica se o accountId é único
     isUnique = await isAccountIdUnique(accountId);
-    attempts++;
   }
-  
-  if (!isUnique) {
-    throw new Error('Não foi possível gerar um accountId único');
-  }
-  
+
   return accountId;
 }
 
@@ -130,44 +126,54 @@ export const register = async (data: RegisterData): Promise<{ user: User | null;
 
 export const login = async (data: LoginData): Promise<{ user: User | null; error: string | null }> => {
   try {
-    // Busca usuário pelo email
-    const { data: user, error } = await supabase
+    // Busca o usuário pelo email
+    const { data: userData } = await supabase
       .from('users')
-      .select('id, name, email, role, status, created_at, last_login, accountid, plano, contato, documento, password')
+      .select('*')
       .eq('email', data.email)
       .single();
 
-    if (error || !user) {
+    // Verifica se o usuário existe
+    if (!userData) {
       return { user: null, error: 'Usuário não encontrado' };
     }
 
-    // Verifica se o status está ativo
-    if (!user.status?.toLowerCase().includes('ativo')) {
-      return { user: null, error: 'Conta inativa' };
+    // Verifica o status do usuário
+    if (userData.status === 'inativo') {
+      // Desconecta todos os dispositivos logados
+      await supabase.auth.signOut();
+      
+      return { 
+        user: null, 
+        error: 'Conta inativa. Entre em contato com o suporte.' 
+      };
     }
 
     // Verifica a senha
-    const validPassword = await bcrypt.compare(data.password, user.password);
-    
-    if (!validPassword) {
+    const isPasswordValid = await bcrypt.compare(data.password, userData.password);
+    if (!isPasswordValid) {
       return { user: null, error: 'Senha incorreta' };
     }
 
-    // Atualiza último login
-    const { error: updateError } = await supabase
+    // Atualiza o último login
+    await supabase
       .from('users')
       .update({ last_login: new Date().toISOString() })
-      .eq('id', user.id);
+      .eq('id', userData.id);
 
-    if (updateError) {
-      return { user: null, error: 'Erro ao atualizar último login' };
-    }
+    // Remove a senha antes de retornar
+    const { password, ...userWithoutPassword } = userData;
 
-    // Remove o campo password antes de retornar
-    const { password, ...userWithoutPassword } = user;
-    return { user: userWithoutPassword as User, error: null };
-  } catch (err) {
-    return { user: null, error: err instanceof Error ? err.message : 'Erro ao fazer login' };
+    return { 
+      user: userWithoutPassword as User, 
+      error: null 
+    };
+  } catch (error) {
+    console.error('Erro no login:', error);
+    return { 
+      user: null, 
+      error: 'Erro inesperado. Tente novamente.' 
+    };
   }
 };
 
@@ -186,21 +192,26 @@ export const getCurrentUser = async (): Promise<User | null> => {
 
 export const logout = async (): Promise<void> => {
   try {
-    // Faz logout no Supabase
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      throw error;
+    // Atualiza o status do usuário para offline no banco de dados
+    const user = await getCurrentUser();
+    if (user) {
+      await supabase
+        .from('users')
+        .update({ 
+          last_logout: new Date().toISOString(),
+          status: 'offline'
+        })
+        .eq('id', user.id);
     }
-    
-    // Limpa o localStorage
-    localStorage.clear();
 
-    // Limpa os cookies de sessão
-    document.cookie.split(";").forEach(function(c) { 
-      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
-    });
-  } catch (err) {
-    console.error('Erro ao fazer logout:', err);
-    throw err;
+    // Desconecta de todos os dispositivos
+    await supabase.auth.signOut();
+
+    // Limpa o localStorage
+    localStorage.removeItem('user');
+    localStorage.removeItem('tokenExpiry');
+  } catch (error) {
+    console.error('Erro ao fazer logout:', error);
+    throw error;
   }
 };

@@ -1,10 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../lib/auth';
+import { supabase } from '../lib/supabase';
+import { toast } from 'react-hot-toast';
 
 interface AuthContextType {
   user: User | null;
   setUser: (user: User | null) => void;
   loading: boolean;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -13,6 +16,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Função para fazer logout
+  const signOut = async () => {
+    try {
+      // Desconecta o usuário
+      await supabase.auth.signOut();
+      
+      // Remove dados do usuário
+      setUser(null);
+      localStorage.removeItem('user');
+      localStorage.removeItem('tokenExpiry');
+
+      // Redireciona para login
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+      toast.error('Erro ao fazer logout. Tente novamente.');
+    }
+  };
+
   useEffect(() => {
     // Carrega o usuário do localStorage e verifica a validade da sessão
     const loadUser = async () => {
@@ -20,7 +42,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const savedUser = localStorage.getItem('user');
         if (savedUser) {
           const parsedUser = JSON.parse(savedUser);
-          // Verifica se o token ainda é válido
+          
+          // Verifica se o usuário está ativo
+          const { data: userData } = await supabase
+            .from('users')
+            .select('status')
+            .eq('id', parsedUser.id)
+            .single();
+
+          // Se o usuário estiver inativo, faz logout
+          if (userData?.status === 'inativo') {
+            toast.error('Sua conta está inativa. Entre em contato com o suporte.');
+            signOut();
+            return;
+          }
+
+          // Verifica a validade do token
           const tokenExpiry = localStorage.getItem('tokenExpiry');
           if (tokenExpiry && new Date(tokenExpiry) > new Date()) {
             setUser(parsedUser);
@@ -31,14 +68,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
       } catch (error) {
-        console.error('Erro ao carregar usuário do localStorage:', error);
+        console.error('Erro ao carregar usuário:', error);
         localStorage.removeItem('user');
         localStorage.removeItem('tokenExpiry');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
-
-    loadUser();
 
     // Adiciona listener para sincronizar entre abas
     const handleStorageChange = (e: StorageEvent) => {
@@ -51,8 +87,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
+    loadUser();
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   const value = {
@@ -69,7 +109,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('tokenExpiry');
       }
     },
-    loading
+    loading,
+    signOut
   };
 
   return (
