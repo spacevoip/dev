@@ -30,7 +30,7 @@ export const Navigation: React.FC = () => {
   const { isCollapsed } = useSidebar();
   
   return (
-    <nav className="space-y-2">
+    <nav className="space-y-1 w-full">
       {menuItems.map((item) => {
         const Icon = item.icon;
         const isActive = location.pathname === item.path;
@@ -40,18 +40,19 @@ export const Navigation: React.FC = () => {
             key={item.path}
             to={item.path}
             className={`
-              flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200
+              flex items-center gap-2 px-2 py-2 rounded-lg transition-all duration-200 w-full
               ${isActive 
                 ? 'bg-white/20 text-white font-medium' 
                 : 'text-white/70 hover:bg-white/10 hover:text-white'
               }
-              ${isCollapsed ? 'justify-center' : ''}
+              ${isCollapsed ? 'justify-center' : 'justify-start'}
+              sm:px-3 sm:py-2.5 sm:gap-3
             `}
             title={isCollapsed ? item.label : undefined}
           >
-            <Icon className={`flex-shrink-0 ${isCollapsed ? 'h-6 w-6' : 'h-5 w-5'}`} />
+            <Icon className={`flex-shrink-0 ${isCollapsed ? 'h-5 w-5 sm:h-6 sm:w-6' : 'h-4 w-4 sm:h-5 sm:w-5'}`} />
             {!isCollapsed && (
-              <span className="truncate">{item.label}</span>
+              <span className="truncate text-sm sm:text-base">{item.label}</span>
             )}
           </Link>
         );
