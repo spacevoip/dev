@@ -33,6 +33,7 @@ export function CallHistory() {
   async function fetchCalls() {
     try {
       setLoading(true);
+      console.log('Iniciando busca de chamadas...');
       let query = supabase
         .from('cdr')
         .select('*')
@@ -47,6 +48,8 @@ export function CallHistory() {
 
       const { data, error } = await query;
 
+      console.log('Resultado da busca:', { data, error });
+
       if (error) throw error;
 
       if (data) {
@@ -54,6 +57,7 @@ export function CallHistory() {
           ...call,
           channel: call.channel.split('PJSIP/')[1]?.substring(0, 4) || call.channel
         }));
+        console.log('Chamadas formatadas:', formattedCalls);
         setCalls(formattedCalls);
       }
     } catch (error) {
