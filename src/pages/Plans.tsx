@@ -127,7 +127,7 @@ export const Plans = () => {
                       `R$ ${typeof prices[plan.id] === 'number' ? prices[plan.id].toFixed(2) : "..."}`
                     )}
                   </span>
-                  <span className="text-gray-500 ml-2 text-sm">/mês</span>
+                  <span className="text-gray-500 ml-2 text-sm">/Periodo</span>
                 </div>
               </div>
 
