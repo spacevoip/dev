@@ -50,33 +50,31 @@ export const StatsGrid = () => {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {stats.map((stat, index) => (
         <div
           key={index}
-          className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${stat.gradient} p-6 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5`}
+          className={`relative overflow-hidden rounded-3xl bg-white/80 p-6 backdrop-blur-sm transition-all duration-300 hover:shadow-sm`}
         >
-          {/* Círculo decorativo */}
-          <div className={`absolute -right-8 -top-8 h-32 w-32 rounded-full bg-gradient-to-br ${stat.iconGradient} opacity-10 blur-2xl`} />
-          
-          <div className="relative flex items-center justify-between">
-            <div className="space-y-2">
-              <p className={`text-sm font-medium ${stat.textColor}`}>
+          <div className="flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <p className={`text-sm font-medium text-gray-600`}>
                 {stat.name}
               </p>
-              <p className={`text-3xl font-bold tracking-tight ${stat.textColor}`}>
+              <div className={`flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br ${stat.iconGradient}`}>
+                <stat.icon className="h-4 w-4 text-white" />
+              </div>
+            </div>
+            
+            <div className="flex items-end justify-between">
+              <p className={`text-2xl sm:text-3xl font-bold ${stat.textColor}`}>
                 {stat.value}
               </p>
               {stat.badge && (
-                <span className="mt-1 inline-flex items-center rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-800">
+                <span className="text-xs text-gray-500">
                   {stat.badge}
                 </span>
               )}
-            </div>
-            
-            <div className={`relative flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${stat.iconGradient}`}>
-              <div className="absolute inset-0 rounded-xl bg-white opacity-20" />
-              <stat.icon className="h-6 w-6 text-white" />
             </div>
           </div>
         </div>
