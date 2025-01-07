@@ -2,36 +2,208 @@
 @tailwind components;
 @tailwind utilities;
 
-@keyframes gradient {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+/* Ajustes globais para melhor compatibilidade entre navegadores */
+html, :host {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
 }
 
-@keyframes fadeIn {
+/* Layout containers otimizados */
+.layout-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  contain: content;
+  transform: translateZ(0); /* Força GPU rendering */
+}
+
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  contain: layout style paint;
+  transform: translateZ(0);
+}
+
+/* Componentes com transform para GPU acceleration */
+.hardware-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Classes para hover otimizado */
+.hover-scale {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.hover-scale:hover {
+  transform: scale(1.05);
+}
+
+.hover-opacity {
+  transition: opacity 0.2s ease;
+  will-change: opacity;
+}
+
+.hover-opacity:hover {
+  opacity: 0.8;
+}
+
+/* Efeito de fade otimizado */
+.fade-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.fade-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.textWrap {
+  -webkit-text-size-adjust: inherit;
+  -moz-text-size-adjust: inherit;
+}
+
+/* Fix para min-height no widget Jivo */
+.jivo_cobrowsing_tooltip {
+  min-height: fit-content !important;
+  contain: layout style;
+  transform: translateZ(0);
+}
+
+/* Fix para zoom no widget Jivo */
+.globalClass__g0L6A a,
+.globalClass__g0L6A form,
+.globalClass__g0L6A iframe,
+.globalClass__g0L6A input,
+.globalClass__g0L6A svg,
+.globalClass__g0L6A textarea {
+  -webkit-transform: scale(1) !important;
+  -moz-transform: scale(1) !important;
+  -ms-transform: scale(1) !important;
+  transform: scale(1) !important;
+  -webkit-transform-origin: 0 0 !important;
+  -moz-transform-origin: 0 0 !important;
+  -ms-transform-origin: 0 0 !important;
+  transform-origin: 0 0 !important;
+  contain: layout style paint;
+  will-change: transform;
+}
+
+/* Utilitário para seleção de texto */
+.no-select {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+}
+
+.select-text {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+}
+
+/* Animações otimizadas que usam apenas transform e opacity */
+@keyframes slideIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translate3d(0, 20px, 0);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
-.animate-gradient {
-  background-size: 200% 200%;
-  animation: gradient 3s ease infinite;
+@keyframes fadeScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateZ(0);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateZ(0);
+  }
 }
 
-.animate-fadeIn {
-  animation: fadeIn 0.6s ease-out forwards;
+@keyframes pulse {
+  0% {
+    transform: scale(1) translateZ(0);
+  }
+  50% {
+    transform: scale(1.05) translateZ(0);
+  }
+  100% {
+    transform: scale(1) translateZ(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+.animate-fade-scale {
+  animation: fadeScale 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Loading spinner otimizado */
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  border-top-color: currentColor;
+  animation: spin 1s linear infinite;
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg) translateZ(0);
+  }
+}
+
+/* Substituindo a animação gradient por uma solução mais eficiente */
+.animate-gradient {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(45deg, #f3f4f6, #e5e7eb);
+}
+
+.animate-gradient::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
+  transform: translateX(-100%);
+  animation: shimmer 2s infinite;
+  will-change: transform;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .delay-100 {
