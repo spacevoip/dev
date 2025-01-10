@@ -2,16 +2,10 @@ import React, { useState } from 'react';
 import { Check, Crown } from 'lucide-react';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { usePlanPrices } from '../hooks/usePlanPrices';
+import { PlanCard } from '../components/Plans/PlanCard';
 import { Toast } from '../components/ui/Toast';
-
-interface Plan {
-  id: string;
-  name: string;
-  extensionsLimit: number;
-  validity: number;
-  isPopular?: boolean;
-  features: string[];
-}
+import PurchasePlanModal from '../components/Plans/PurchasePlanModal';
+import { Plan } from '../types/Plan';
 
 const plans: Plan[] = [
   {
@@ -68,15 +62,23 @@ const plans: Plan[] = [
   },
 ];
 
-export const Plans = () => {
+export default function Plans() {
   const { currentUser, loading: userLoading } = useCurrentUser();
   const { prices, loading: pricesLoading } = usePlanPrices();
   const [showToast, setShowToast] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
 
   const loading = pricesLoading || userLoading;
 
-  const handleUpgradeClick = () => {
-    setShowToast(true);
+  const handleSelectPlan = (plan: Plan) => {
+    setSelectedPlan(plan);
+    setShowPurchaseModal(true);
+  };
+
+  const handlePaymentSuccess = () => {
+    // Recarrega a página para atualizar os dados do plano
+    window.location.reload();
   };
 
   return (
@@ -87,6 +89,7 @@ export const Plans = () => {
         isVisible={showToast}
         onClose={() => setShowToast(false)}
       />
+
       <div className="text-center max-w-2xl mx-auto">
         <div className="flex items-center justify-center gap-4 mb-3">
           <div className="h-10 w-10 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -165,31 +168,33 @@ export const Plans = () => {
                     : 'bg-gray-900 text-white hover:bg-gray-800'
                 }`}
                 disabled={currentUser?.plano === plan.name || (plan.id === 'trial' && currentUser?.plano && currentUser.plano !== 'Sip Trial')}
-                onClick={() => {
-                  if ((currentUser?.plano === 'Sip Trial' || currentUser?.plano === 'Sip Basico' || currentUser?.plano === 'Sip Premium') &&
-                      ((currentUser?.plano === 'Sip Trial' && plan.name !== 'Sip Trial') ||
-                       (currentUser?.plano === 'Sip Basico' && plan.name !== 'Sip Trial' && plan.name !== 'Sip Basico') ||
-                       (currentUser?.plano === 'Sip Premium' && plan.name === 'Sip Exclusive'))) {
-                    handleUpgradeClick();
-                  }
-                }}
+                onClick={() => handleSelectPlan(plan)}
               >
                 {currentUser?.plano === plan.name 
                   ? 'Plano Atual' 
                   : plan.id === 'trial' && currentUser?.plano && currentUser.plano !== 'Sip Trial'
                   ? 'Não Disponível'
-                  : (currentUser?.plano === 'Sip Trial' || currentUser?.plano === 'Sip Basico' || currentUser?.plano === 'Sip Premium') &&
-                    ((currentUser?.plano === 'Sip Trial' && plan.name !== 'Sip Trial') ||
-                     (currentUser?.plano === 'Sip Basico' && plan.name !== 'Sip Trial' && plan.name !== 'Sip Basico') ||
-                     (currentUser?.plano === 'Sip Premium' && plan.name === 'Sip Exclusive'))
-                  ? 'Fazer Upgrade'
-                  : 'Assinar Plano'
+                  : 'Fazer Upgrade'
                 }
               </button>
             </div>
           </div>
         ))}
       </div>
+
+      {showPurchaseModal && selectedPlan && currentUser && (
+        <PurchasePlanModal
+          isOpen={showPurchaseModal}
+          onClose={() => {
+            setShowPurchaseModal(false);
+            setSelectedPlan(null);
+          }}
+          plan={selectedPlan}
+          currentUser={currentUser}
+          planPrice={prices[selectedPlan.id] || 0}
+          onPaymentSuccess={handlePaymentSuccess}
+        />
+      )}
     </div>
   );
-};
+}

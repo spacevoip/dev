@@ -7,12 +7,16 @@ export default {
   theme: {
     extend: {
       screens: {
+        'xs': '375px',
         'sm': '640px',
         'md': '768px',
         'lg': '1024px',
         'xl': '1280px',
         '2xl': '1536px',
         '3xl': '1920px',
+        'mobile': {'max': '639px'},
+        'tablet': {'min': '640px', 'max': '1023px'},
+        'desktop': {'min': '1024px'},
       },
       animation: {
         'ping': 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite',
@@ -41,9 +45,21 @@ export default {
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
       },
-      maxWidth: {
-        '8xl': '1920px',
+      spacing: {
+        '18': '4.5rem',
+        '22': '5.5rem',
       },
+      maxWidth: {
+        '8xl': '88rem',
+        '9xl': '96rem',
+      },
+      zIndex: {
+        '60': '60',
+        '70': '70',
+        '80': '80',
+        '90': '90',
+        '100': '100',
+      }
     },
   },
   plugins: [],

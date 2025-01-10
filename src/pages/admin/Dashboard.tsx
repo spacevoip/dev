@@ -54,7 +54,7 @@ interface DashboardMetrics {
   inactiveUsers: number;
   totalExtensions: number;
   activeExtensions: number;
-  totalCallMinutes: number;
+  totalCDR: number;
   expiredPlans: number;
   revenue: string;
 }
@@ -95,7 +95,7 @@ export function AdminDashboard() {
     inactiveUsers: 0,
     totalExtensions: 0,
     activeExtensions: 0,
-    totalCallMinutes: 0,
+    totalCDR: 0,
     expiredPlans: 0,
     revenue: 'R$ 0'
   });
@@ -140,6 +140,20 @@ export function AdminDashboard() {
       const thirtyDaysAgo = new Date(todayStart);
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29); // -29 para incluir hoje
 
+      // Buscar todos os pagamentos
+      const { data: payments, error: paymentsError } = await supabase
+        .from('pagamentos')
+        .select('valor');
+
+      if (paymentsError) throw paymentsError;
+
+      // Calcular receita total
+      const totalRevenue = payments?.reduce((acc, payment) => acc + (payment.valor || 0), 0) || 0;
+      const formattedRevenue = new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      }).format(totalRevenue);
+
       // Buscar usuários e seus status
       const { data: users, error: usersError } = await supabase
         .from('users')
@@ -162,20 +176,12 @@ export function AdminDashboard() {
 
       const activeExtensions = extensions?.filter(e => e?.status === 'registered').length || 0;
 
-      // Buscar chamadas dos últimos 30 dias
-      const { data: calls, error: callsError } = await supabase
+      // Buscar total de CDRs
+      const { count: totalCDR, error: cdrError } = await supabase
         .from('cdr')
-        .select('*')
-        .gte('start', thirtyDaysAgo.toISOString())
-        .order('start', { ascending: true });
+        .select('*', { count: 'exact', head: true });
 
-      if (callsError) throw callsError;
-
-      // Filtrar chamadas com datas válidas
-      const validCalls = calls?.filter(call => call?.start && isValidDate(call.start)) || [];
-
-      // Calcular total de minutos em chamadas
-      const totalMinutes = validCalls.reduce((acc, call) => acc + ((call?.billsec || 0) / 60), 0);
+      if (cdrError) throw cdrError;
 
       // Calcular planos vencidos
       const expiredPlans = validUsers.filter(user => {
@@ -193,9 +199,9 @@ export function AdminDashboard() {
         inactiveUsers,
         totalExtensions: extensions?.length || 0,
         activeExtensions,
-        totalCallMinutes: Math.round(totalMinutes),
+        totalCDR: totalCDR || 0,
         expiredPlans,
-        revenue: 'R$ 0'
+        revenue: formattedRevenue
       });
 
       // Preparar dados para o gráfico de usuários
@@ -237,19 +243,13 @@ export function AdminDashboard() {
         .limit(5);
 
       // Buscar chamadas recentes
-      const { data: latestCalls } = await supabase
+      const { data: latestCalls, error: latestCallsError } = await supabase
         .from('cdr')
-        .select('*')
+        .select('id, channel, dst, start, billsec, disposition')
         .order('start', { ascending: false })
         .limit(5);
 
-      // Filtrar e formatar usuários recentes
-      if (latestUsers) {
-        const validLatestUsers = latestUsers
-          .filter(user => user?.created_at && isValidDate(user.created_at))
-          .slice(0, 5);
-        setRecentUsers(validLatestUsers);
-      }
+      if (latestCallsError) throw latestCallsError;
 
       // Filtrar e formatar chamadas recentes
       if (latestCalls) {
@@ -257,10 +257,21 @@ export function AdminDashboard() {
           .filter(call => call?.start && isValidDate(call.start))
           .map(call => ({
             ...call,
-            channel: call.channel && call.channel.split('PJSIP/')[1]?.substring(0, 4) || call.channel
+            // Formata o número do ramal (remove PJSIP/)
+            channel: call.channel?.split('PJSIP/')[1]?.split('-')[0] || call.channel,
+            // Formata o número de destino
+            dst: call.dst?.replace(/^sip:/, '') || call.dst
           }))
           .slice(0, 5);
         setRecentCalls(validLatestCalls);
+      }
+
+      // Filtrar e formatar usuários recentes
+      if (latestUsers) {
+        const validLatestUsers = latestUsers
+          .filter(user => user?.created_at && isValidDate(user.created_at))
+          .slice(0, 5);
+        setRecentUsers(validLatestUsers);
       }
 
       setLastUpdate(new Date());
@@ -336,8 +347,8 @@ export function AdminDashboard() {
       color: 'from-green-500 to-emerald-500'
     },
     {
-      label: 'Minutos em Chamadas',
-      value: metrics.totalCallMinutes.toString(),
+      label: 'Quantidade CDR',
+      value: metrics.totalCDR.toString(),
       icon: Clock,
       color: 'from-yellow-500 to-orange-500'
     },

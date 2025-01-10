@@ -81,18 +81,11 @@ export const Register = () => {
         // Salva o usuário no localStorage
         localStorage.setItem('user', JSON.stringify(user));
         
-        toast.success('Conta criada com sucesso! Redirecionando para o dashboard...');
+        toast.success('Conta criada com sucesso! Redirecionando para o login...');
         
         // Pequeno delay para mostrar a mensagem antes do redirecionamento
         setTimeout(() => {
-          // Redireciona com base no papel do usuário
-          if (user.role === 'admin') {
-            navigate('/admin/dashboard');
-          } else if (user.role === 'reseller') {
-            navigate('/reseller/dashboard');
-          } else {
-            navigate('/dashboard');
-          }
+          navigate('/login');
         }, 1500);
       }
     } catch (err) {
@@ -263,8 +256,21 @@ export const Register = () => {
       </div>
 
       {/* Lado Direito - Imagem */}
-      <div className="hidden md:block md:w-1/2">
-        <div className="h-full w-full bg-cover bg-center" style={{ backgroundImage: 'url(/bg-register.jpg)' }} />
+      <div className="hidden md:block md:w-1/2 relative overflow-hidden">
+        <div 
+          className="absolute inset-0 bg-cover bg-center transform hover:scale-105 transition-transform duration-[3000ms]" 
+          style={{ 
+            backgroundImage: 'url(https://avoip.com.br/wp-content/uploads/2024/02/58b9bc5b-a764-48b8-8969-621a3464f2b2.jpeg)'
+          }}
+        />
+        {/* Gradiente superior */}
+        <div className="absolute inset-0 bg-gradient-to-b from-indigo-950/80 via-transparent to-transparent" />
+        {/* Gradiente lateral */}
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-950/90 via-indigo-950/30 to-transparent" />
+        {/* Efeito de brilho */}
+        <div className="absolute inset-0 opacity-30 mix-blend-overlay bg-gradient-to-br from-violet-500/20 via-transparent to-indigo-500/20" />
+        {/* Efeito de partículas (opcional) */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_white_1px,_transparent_1px)] bg-[length:20px_20px] opacity-[0.03]" />
       </div>
     </div>
   );

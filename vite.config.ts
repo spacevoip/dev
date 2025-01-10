@@ -40,7 +40,14 @@ export default defineConfig(({ mode }) => {
       port: 4173,
       host: true,
       strictPort: true,
-      historyApiFallback: true,
+      proxy: {
+        '/api': {
+          target: env.VITE_API_URL || 'https://91.108.125.149:5000',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api/, ''),
+        },
+      },
     },
     build: {
       outDir: 'dist',
@@ -49,17 +56,11 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: {
             vendor: ['react', 'react-dom', 'react-router-dom'],
-            ui: ['@headlessui/react', '@heroicons/react'],
-            charts: ['recharts', 'chart.js', 'react-chartjs-2'],
-          }
-        }
+          },
+        },
       },
-      commonjsOptions: {
-        include: [/node_modules/],
-        transformMixedEsModules: true
-      },
-      chunkSizeWarningLimit: 1500,
-      sourcemap: true,
+      sourcemap: false,
+      copyPublicDir: true,
     },
     optimizeDeps: {
       esbuildOptions: {
