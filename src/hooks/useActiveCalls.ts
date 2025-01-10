@@ -1,11 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
-import type { CallsResponse } from '../types/activeCalls';
-
-// Usando a variável de ambiente do Vite e forçando HTTPS
-const API_URL = (import.meta.env.VITE_API_URL || 'https://91.108.125.149:5000')
-  .replace(/^http:/, 'https:')
-  .replace(/\/$/, '');
+import type { ApiCall, ActiveCall } from '../types/activeCalls';
 
 // Função auxiliar para extrair o ramal do Channel
 function extractRamal(channel: string): string {
@@ -15,100 +10,121 @@ function extractRamal(channel: string): string {
 
 // Função auxiliar para traduzir o estado
 function translateState(state: string): string {
-  switch (state) {
-    case 'Ring':
+  switch (state.toLowerCase()) {
+    case 'ring':
       return 'Chamando';
-    case 'Up':
+    case 'up':
       return 'Falando';
+    case 'down':
+      return 'Desligada';
     default:
       return state;
   }
 }
 
-// Função para garantir HTTPS na URL
-const ensureHttps = (url: string) => url.replace(/^http:/, 'https:');
+// Função para extrair ID único da chamada
+function extractCallId(call: ApiCall): string {
+  // Usa uma combinação de CallerID e Extension para identificar a chamada única
+  return `${call.CallerID}-${call.Extension}`;
+}
 
-export function useActiveCalls() {
+interface UseActiveCallsOptions {
+  select?: (data: ActiveCall[]) => any;
+  staleTime?: number;
+}
+
+export function useActiveCalls(options: UseActiveCallsOptions = {}) {
   const { user } = useAuth();
   const accountId = user?.accountid;
 
-  const fetchCalls = async () => {
-    if (!accountId || !API_URL) {
-      return [];
-    }
-
-    try {
-      const apiUrl = ensureHttps(`${API_URL}/active-calls`);
-      
-      // Busca as chamadas da API com timeout de 10 segundos
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-      
-      const response = await fetch(apiUrl, {
-        signal: controller.signal,
-        mode: 'cors',
-        credentials: 'omit',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        }
-      });
-      
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        return [];
-      }
-      
-      const data = await response.json() as CallsResponse;
-
-      if (!data?.active_calls) {
-        return [];
-      }
-
-      // Filtra e processa as chamadas
-      return data.active_calls
-        .filter(call => {
-          // Filtra apenas chamadas com estado Ring ou Up
-          const validState = ['Ring', 'Up'].includes(call.State);
-          
-          // Verifica se o ramal pertence ao usuário
-          const ramal = extractRamal(call.Channel);
-          const isUserCall = ramal && call.Accountcode === accountId;
-          
-          return validState && isUserCall;
-        })
-        .map(call => ({
-          channel: call.Channel,
-          callerid: call.CallerID,
-          duracao: call.Duration,
-          destino: call.Extension,
-          status: translateState(call.State),
-          ramal: extractRamal(call.Channel)
-        }));
-
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        console.error('Timeout ao buscar chamadas');
-      }
-      return [];
-    }
-  };
-
   return useQuery({
-    queryKey: ['active-calls', accountId],
-    queryFn: fetchCalls,
+    queryKey: ['activeCalls', accountId],
+    queryFn: async () => {
+      if (!accountId) {
+        return [];
+      }
+
+      try {
+        const apiUrl = `https://intermed.appinovavoip.com:3000/active-calls?accountid=${accountId}`;
+        
+        // Busca as chamadas da API com timeout de 10 segundos
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
+        const response = await fetch(apiUrl, {
+          signal: controller.signal,
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'x-api-key': '191e8a1e-d313-4e12-b608-d1a759b1a106'
+          }
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch active calls: ${response.status} ${response.statusText}`);
+        }
+
+        const calls: ApiCall[] = await response.json();
+
+        // Verifica se calls é um array
+        if (!Array.isArray(calls)) {
+          console.error('Formato de resposta inválido:', calls);
+          return [];
+        }
+
+        // Log para debug
+        console.log('Chamadas recebidas:', calls);
+
+        // Agrupa chamadas únicas sem filtrar por Application
+        const uniqueCalls = calls.reduce((acc: ApiCall[], call: ApiCall) => {
+          const callId = extractCallId(call);
+          
+          // Procura se já existe uma chamada com o mesmo ID
+          const existingCallIndex = acc.findIndex(
+            (existing) => extractCallId(existing) === callId
+          );
+
+          if (existingCallIndex === -1) {
+            // Se não existe, adiciona a chamada
+            acc.push(call);
+          } else if (call.State.toLowerCase() === 'up') {
+            // Se existe e a nova chamada está 'Up', substitui a existente
+            acc[existingCallIndex] = call;
+          }
+
+          return acc;
+        }, []);
+
+        // Log para debug
+        console.log('Chamadas únicas após deduplicação:', uniqueCalls);
+
+        // Formata as chamadas únicas
+        const formattedCalls: ActiveCall[] = uniqueCalls.map(
+          (call: ApiCall) => ({
+            channel: call.Channel,
+            callerid: call.CallerID,
+            duracao: call.Duration,
+            destino: call.Extension,
+            status: translateState(call.State),
+            ramal: extractRamal(call.Channel)
+          })
+        );
+
+        // Log final para debug
+        console.log('Chamadas formatadas:', formattedCalls);
+
+        return formattedCalls;
+
+      } catch (error) {
+        console.error('Erro ao buscar chamadas ativas:', error);
+        return [];
+      }
+    },
     refetchInterval: 5000,
-    enabled: !!accountId && !!API_URL,
-    retry: 1,
-    retryDelay: 1000,
-    staleTime: 2000,
-    cacheTime: 0,
-    refetchOnWindowFocus: false,
+    enabled: !!accountId,
+    staleTime: options.staleTime,
+    select: options.select,
   });
 }

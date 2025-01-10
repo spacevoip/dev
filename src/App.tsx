@@ -22,6 +22,7 @@ import { Subscriptions } from './pages/Subscriptions';
 import { Settings } from './pages/Settings';
 import { Plans } from './pages/Plans';
 import { Queues } from './pages/Queues';
+import { SipAuto } from './pages/SipAuto';
 
 // Admin Pages
 import { AdminLayout } from './components/Admin/AdminLayout';
@@ -33,6 +34,13 @@ import { AdminPlans } from './pages/admin/Plans';
 import { CallHistory } from './pages/admin/CallHistory';
 import { AdminExtensions } from './pages/admin/Extensions';
 import { AdminCallerIDBlock } from './pages/admin/CallerIDBlock';
+import { AdminActiveCalls } from './pages/admin/ActiveCalls';
+
+// Reseller Pages
+import { ResellerLayout } from './components/Reseller/ResellerLayout';
+import { ResellerDashboard } from './pages/reseller/Dashboard';
+import { ResellerCustomers } from './pages/reseller/Customers';
+import { ResellerPlans } from './pages/reseller/Plans';
 
 function AppContent() {
   usePreventRefresh();
@@ -53,8 +61,9 @@ function AppContent() {
           <Route path="did" element={<DID />} />
           <Route path="recharge" element={<Recharge />} />
           <Route path="subscriptions" element={<Subscriptions />} />
-          <Route path="plans" element={<Plans />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="plans" element={<Plans />} />
+          <Route path="sip-auto" element={<SipAuto />} />
         </Route>
 
         <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminLayout /></ProtectedRoute>}>
@@ -65,8 +74,22 @@ function AppContent() {
           <Route path="extensions" element={<AdminExtensions />} />
           <Route path="calleridblock" element={<AdminCallerIDBlock />} />
           <Route path="call-history" element={<CallHistory />} />
+          <Route path="active-calls" element={<AdminActiveCalls />} />
           <Route path="settings" element={<AdminSettings />} />
           <Route path="plans" element={<AdminPlans />} />
+        </Route>
+
+        <Route path="/reseller" element={<ProtectedRoute requireReseller><ResellerLayout /></ProtectedRoute>}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<ResellerDashboard />} />
+          <Route path="customers" element={<ResellerCustomers />} />
+          <Route path="plans" element={<ResellerPlans />} />
+          <Route path="extensions" element={<div>Em desenvolvimento</div>} />
+          <Route path="call-history" element={<div>Em desenvolvimento</div>} />
+          <Route path="support" element={<div>Em desenvolvimento</div>} />
+          <Route path="billing" element={<div>Em desenvolvimento</div>} />
+          <Route path="company" element={<div>Em desenvolvimento</div>} />
+          <Route path="settings" element={<div>Em desenvolvimento</div>} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />

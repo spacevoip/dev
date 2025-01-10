@@ -4,9 +4,14 @@ import { useAuth } from '../../contexts/AuthContext';
 import { PhoneXMarkIcon } from '@heroicons/react/24/outline';
 import { PhoneIcon } from 'lucide-react';
 import { Dialog } from '@headlessui/react';
+import type { ActiveCall } from '../../types';
 
-const ActiveCallsTable: React.FC = () => {
-  const { data: calls = [], isLoading, error, refetch } = useActiveCalls();
+interface ActiveCallsTableProps {
+  calls: ActiveCall[];
+}
+
+const ActiveCallsTable: React.FC<ActiveCallsTableProps> = ({ calls }) => {
+  const { refetch } = useActiveCalls();
   const { user } = useAuth();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
@@ -50,16 +55,14 @@ const ActiveCallsTable: React.FC = () => {
     }
   };
 
-  if (isLoading) {
-    return <div className="text-center py-4">Carregando chamadas...</div>;
-  }
-
-  if (error) {
-    return <div className="text-center py-4 text-red-600">Erro ao carregar chamadas</div>;
-  }
-
   if (!calls.length) {
-    return <div className="text-center py-4">Nenhuma chamada ativa no momento</div>;
+    return (
+      <div className="text-center py-12">
+        <PhoneIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma chamada ativa</h3>
+        <p className="text-gray-500">Não há chamadas em andamento no momento.</p>
+      </div>
+    );
   }
 
   return (

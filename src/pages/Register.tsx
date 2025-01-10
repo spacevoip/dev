@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Phone, Mail, Lock, User, ArrowLeft, ArrowRight } from 'lucide-react';
+import { toast } from 'sonner';
 import { register } from '../lib/auth';
-import { toast } from 'react-hot-toast';
 
 export const Register = () => {
   const navigate = useNavigate();
@@ -68,8 +67,8 @@ export const Register = () => {
       const { user, error } = await register({
         name: formData.name.trim(),
         email: formData.email.trim(),
-        contato: formData.phone.trim(),
-        documento: formData.document.trim(),
+        contato: formData.phone.replace(/\D/g, ''),
+        documento: formData.document.replace(/\D/g, ''),
         password: formData.password
       });
 
@@ -79,12 +78,26 @@ export const Register = () => {
       }
 
       if (user) {
-        toast.success('Conta criada com sucesso!');
-        navigate('/login');
+        // Salva o usuário no localStorage
+        localStorage.setItem('user', JSON.stringify(user));
+        
+        toast.success('Conta criada com sucesso! Redirecionando para o dashboard...');
+        
+        // Pequeno delay para mostrar a mensagem antes do redirecionamento
+        setTimeout(() => {
+          // Redireciona com base no papel do usuário
+          if (user.role === 'admin') {
+            navigate('/admin/dashboard');
+          } else if (user.role === 'reseller') {
+            navigate('/reseller/dashboard');
+          } else {
+            navigate('/dashboard');
+          }
+        }, 1500);
       }
     } catch (err) {
-      toast.error('Erro ao criar conta');
       console.error('Erro no registro:', err);
+      toast.error('Erro ao criar conta');
     } finally {
       setLoading(false);
     }
@@ -204,7 +217,7 @@ export const Register = () => {
                   value={formData.password}
                   onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                   className="w-full bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-transparent transition-colors"
-                  placeholder="Crie uma senha"
+                  placeholder="Digite sua senha"
                   required
                   disabled={loading}
                   minLength={6}
@@ -231,45 +244,27 @@ export const Register = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-violet-600 hover:bg-violet-700 text-white py-3.5 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? (
-                <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto" />
-              ) : (
-                'Criar Conta'
-              )}
+              {loading ? 'Criando conta...' : 'Criar Conta'}
             </button>
 
-            <p className="text-center text-base text-gray-300">
-              Já tem uma conta?{' '}
-              <button 
+            <div className="text-center">
+              <button
+                type="button"
                 onClick={() => navigate('/login')}
-                className="font-medium text-lg text-violet-400 hover:text-violet-300 transition-colors"
-                disabled={loading}
+                className="text-sm text-gray-300 hover:text-white transition-colors"
               >
-                Fazer Login
+                Já tem uma conta? Entre aqui
               </button>
-            </p>
+            </div>
           </form>
         </div>
       </div>
 
       {/* Lado Direito - Imagem */}
-      <div className="hidden md:block md:w-1/2 relative overflow-hidden">
-        <div 
-          className="absolute inset-0 bg-cover bg-center transform hover:scale-105 transition-transform duration-[3000ms]" 
-          style={{ 
-            backgroundImage: 'url(https://avoip.com.br/wp-content/uploads/2024/02/58b9bc5b-a764-48b8-8969-621a3464f2b2.jpeg)'
-          }}
-        />
-        {/* Gradiente superior */}
-        <div className="absolute inset-0 bg-gradient-to-b from-indigo-950/80 via-transparent to-transparent" />
-        {/* Gradiente lateral */}
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-950/90 via-indigo-950/30 to-transparent" />
-        {/* Efeito de brilho */}
-        <div className="absolute inset-0 opacity-30 mix-blend-overlay bg-gradient-to-br from-violet-500/20 via-transparent to-indigo-500/20" />
-        {/* Efeito de partículas */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_white_1px,_transparent_1px)] bg-[length:20px_20px] opacity-[0.03]" />
+      <div className="hidden md:block md:w-1/2">
+        <div className="h-full w-full bg-cover bg-center" style={{ backgroundImage: 'url(/bg-register.jpg)' }} />
       </div>
     </div>
   );

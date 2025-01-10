@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Check, Crown } from 'lucide-react';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { usePlanPrices } from '../hooks/usePlanPrices';
+import { Toast } from '../components/ui/Toast';
 
 interface Plan {
   id: string;
@@ -70,11 +71,22 @@ const plans: Plan[] = [
 export const Plans = () => {
   const { currentUser, loading: userLoading } = useCurrentUser();
   const { prices, loading: pricesLoading } = usePlanPrices();
+  const [showToast, setShowToast] = useState(false);
 
   const loading = pricesLoading || userLoading;
 
+  const handleUpgradeClick = () => {
+    setShowToast(true);
+  };
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <Toast
+        message="Para realizar o upgrade do seu plano, entre em contato com nossa equipe de suporte. Teremos prazer em ajudar você a escolher a melhor opção para sua empresa."
+        type="info"
+        isVisible={showToast}
+        onClose={() => setShowToast(false)}
+      />
       <div className="text-center max-w-2xl mx-auto">
         <div className="flex items-center justify-center gap-4 mb-3">
           <div className="h-10 w-10 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -153,6 +165,14 @@ export const Plans = () => {
                     : 'bg-gray-900 text-white hover:bg-gray-800'
                 }`}
                 disabled={currentUser?.plano === plan.name || (plan.id === 'trial' && currentUser?.plano && currentUser.plano !== 'Sip Trial')}
+                onClick={() => {
+                  if ((currentUser?.plano === 'Sip Trial' || currentUser?.plano === 'Sip Basico' || currentUser?.plano === 'Sip Premium') &&
+                      ((currentUser?.plano === 'Sip Trial' && plan.name !== 'Sip Trial') ||
+                       (currentUser?.plano === 'Sip Basico' && plan.name !== 'Sip Trial' && plan.name !== 'Sip Basico') ||
+                       (currentUser?.plano === 'Sip Premium' && plan.name === 'Sip Exclusive'))) {
+                    handleUpgradeClick();
+                  }
+                }}
               >
                 {currentUser?.plano === plan.name 
                   ? 'Plano Atual' 

@@ -1,31 +1,78 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Plus } from 'lucide-react';
 import { AddExtensionModal } from '../components/Extensions/AddExtensionModal';
 import { EditExtensionModal } from '../components/Extensions/EditExtensionModal';
 import { ExtensionList } from '../components/Extensions/ExtensionList';
 import { ExtensionsLimit } from '../components/Extensions/ExtensionsLimit';
-import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
-import { Extension } from '../types/extension';
-import { useExtensionStatus } from '../hooks/useExtensionStatus';
+import { DeleteExtensionModal } from '../components/Extensions/DeleteExtensionModal';
+import { ExtensionStats } from '../components/Extensions/ExtensionStats';
 import { useExtensionsCount } from '../hooks/useExtensionsCount';
 import { toast } from 'react-hot-toast';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '../lib/supabase';
+import { Extension } from '../types/extension';
+import { useAuth } from '../contexts/AuthContext';
+import { useExtensionsStatus } from '../hooks/useExtensionsStatus';
 
 export const Extensions = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingExtension, setEditingExtension] = useState<Extension | null>(null);
-  const { extensionStatuses } = useExtensionStatus();
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [extensionToDelete, setExtensionToDelete] = useState<Extension | null>(null);
   const { currentCount, planLimit, loading: limitLoading } = useExtensionsCount();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
 
-  // Removido o filtro de status: 'ativo' para mostrar todos os ramais
-  const { data: extensions, loading, error, refetch } = useSupabaseQuery<Extension>('extensions');
+  // Queries para buscar ramais
+  const { data: extensions = [] } = useQuery<Extension[]>({
+    queryKey: ['extensions', user?.accountid],
+    queryFn: async () => {
+      if (!user?.accountid) throw new Error('Usuário não autenticado');
 
-  // Formata os dados com o status atual
-  const formattedExtensions = extensions?.map(ext => ({
-    ...ext,
-    status: extensionStatuses[ext.numero] || 'unknown',
-  })) || [];
+      const { data, error } = await supabase
+        .from('extensions')
+        .select('*, snystatus')
+        .eq('accountid', user.accountid)
+        .order('numero');
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.accountid,
+    refetchInterval: 5000 // Atualiza a cada 5 segundos para ter o status atualizado
+  });
 
-  const handleAddClick = async () => {
+  // Queries para status dos ramais
+  const extensionStatuses = useExtensionsStatus(extensions);
+
+  // Mutation para deletar extensão
+  const deleteMutation = useMutation({
+    mutationFn: async (extensionId: string) => {
+      if (!user?.accountid) throw new Error('Usuário não autenticado');
+
+      const { error } = await supabase
+        .from('extensions')
+        .delete()
+        .match({ id: extensionId, accountid: user.accountid });
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['extensions', user?.accountid]);
+      toast.success('Ramal excluído com sucesso!');
+    },
+    onError: (error) => {
+      console.error('Erro ao excluir ramal:', error);
+      toast.error('Erro ao excluir ramal');
+    }
+  });
+
+  const handleAddClick = useCallback(() => {
+    if (!user?.accountid) {
+      toast.error('Usuário não autenticado');
+      return;
+    }
+
     if (limitLoading) {
       toast.loading('Verificando limite de ramais...');
       return;
@@ -46,101 +93,125 @@ export const Extensions = () => {
     }
 
     setIsAddModalOpen(true);
-  };
+  }, [currentCount, planLimit, limitLoading, user?.accountid]);
 
-  const handleAddSuccess = () => {
-    refetch();
-  };
+  const handleAddSuccess = useCallback(() => {
+    queryClient.invalidateQueries(['extensions', user?.accountid]);
+    setIsAddModalOpen(false);
+  }, [queryClient, user?.accountid]);
 
-  const handleEditSuccess = () => {
-    refetch();
+  const handleEditSuccess = useCallback(() => {
+    queryClient.invalidateQueries(['extensions', user?.accountid]);
     setEditingExtension(null);
-  };
+  }, [queryClient, user?.accountid]);
 
-  const handleDelete = async (extension: Extension) => {
-    if (!confirm(`Tem certeza que deseja excluir o ramal ${extension.numero}?`)) {
+  const handleDelete = useCallback((extension: Extension) => {
+    if (!user?.accountid) {
+      toast.error('Usuário não identificado');
       return;
     }
 
-    try {
-      const { error } = await supabase
-        .from('extensions')
-        .delete()
-        .eq('id', extension.id);
-
-      if (error) throw error;
-
-      refetch();
-      toast.success('Ramal excluído com sucesso!');
-    } catch (error) {
-      console.error('Erro ao excluir ramal:', error);
-      toast.error('Erro ao excluir ramal');
+    if (extension.accountid !== user.accountid) {
+      toast.error('Você não tem permissão para excluir este ramal');
+      return;
     }
-  };
+
+    setExtensionToDelete(extension);
+    setIsDeleteModalOpen(true);
+  }, [user?.accountid]);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (extensionToDelete) {
+      deleteMutation.mutate(extensionToDelete.id);
+      setIsDeleteModalOpen(false);
+    }
+  }, [extensionToDelete, deleteMutation]);
+
+  const handleDeleteCancel = useCallback(() => {
+    setIsDeleteModalOpen(false);
+  }, []);
+
+  // Se não houver usuário autenticado, mostra mensagem
+  if (!user?.accountid) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-800">Não autorizado</h2>
+          <p className="mt-2 text-gray-600">Faça login para acessar os ramais.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const formattedExtensions = extensions.map(ext => ({
+    ...ext,
+    status: extensionStatuses[ext.numero] || 'unknown'
+  }));
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Extensions</h1>
-        <button
-          onClick={handleAddClick}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg hover:from-purple-700 hover:to-blue-600 transition-all"
-          disabled={loading || limitLoading}
-        >
-          <Plus className="h-5 w-5" />
-          Add Extension
-        </button>
-      </div>
-
-      {/* Limite de Ramais */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <ExtensionsLimit />
-      </div>
-
-      {/* Lista de Ramais */}
-      {loading ? (
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="text-gray-500 mt-2">Carregando ramais...</p>
-        </div>
-      ) : error ? (
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg">
-          Erro ao carregar ramais: {error.message}
-        </div>
-      ) : formattedExtensions.length === 0 ? (
-        <div className="bg-white shadow rounded-lg p-8 text-center">
-          <p className="text-gray-500">Nenhum ramal cadastrado.</p>
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold text-gray-900">Ramais</h1>
           <button
             onClick={handleAddClick}
-            className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg hover:from-purple-700 hover:to-blue-600 transition-all"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700 transition-colors"
+            disabled={currentCount >= planLimit}
           >
             <Plus className="h-5 w-5" />
-            Adicionar Primeiro Ramal
+            Adicionar Ramal
           </button>
         </div>
-      ) : (
-        <ExtensionList
-          extensions={formattedExtensions}
-          onEdit={setEditingExtension}
-          onDelete={handleDelete}
-        />
-      )}
 
-      {/* Modais */}
-      <AddExtensionModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onSuccess={handleAddSuccess}
-      />
-
-      {editingExtension && (
-        <EditExtensionModal
-          extension={editingExtension}
-          isOpen={!!editingExtension}
-          onClose={() => setEditingExtension(null)}
-          onSuccess={handleEditSuccess}
+        <ExtensionsLimit showProgressBar className="mb-2" />
+        
+        <ExtensionStats 
+          extensions={extensions} 
+          extensionStatuses={extensionStatuses}
         />
-      )}
+
+        {extensions.length === 0 ? (
+          <div className="bg-white shadow rounded-lg p-8 text-center">
+            <p className="text-gray-500">Nenhum ramal cadastrado.</p>
+            <button
+              onClick={handleAddClick}
+              className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-all"
+            >
+              <Plus className="h-5 w-5" />
+              Adicionar Primeiro Ramal
+            </button>
+          </div>
+        ) : (
+          <ExtensionList
+            extensions={formattedExtensions}
+            onEdit={setEditingExtension}
+            onDelete={handleDelete}
+          />
+        )}
+
+        <AddExtensionModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onSuccess={handleAddSuccess}
+          accountId={user?.accountid || ''}
+        />
+
+        {editingExtension && (
+          <EditExtensionModal
+            extension={editingExtension}
+            isOpen={!!editingExtension}
+            onClose={() => setEditingExtension(null)}
+            onSuccess={handleEditSuccess}
+          />
+        )}
+
+        <DeleteExtensionModal
+          isOpen={isDeleteModalOpen}
+          onClose={handleDeleteCancel}
+          onConfirm={handleDeleteConfirm}
+          extension={extensionToDelete}
+        />
+      </div>
     </div>
   );
 };

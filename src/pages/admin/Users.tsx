@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, RefreshCw, Search } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import { UsersTable } from '../../components/Admin/Users/UsersTable';
 import { UserEditModal } from '../../components/Admin/Users/UserEditModal';
 import { AddUserModal } from '../../components/Admin/Users/AddUserModal';
+import { UserStats } from '../../components/Admin/Users/UserStats';
+import { UserFilters } from '../../components/Admin/Users/UserFilters';
 
 export interface AdminUser {
   id: string;
@@ -17,10 +19,18 @@ export interface AdminUser {
   last_login?: string;
   documento?: string;
   status?: string;
+  extensions_count?: number;
+}
+
+interface Plan {
+  id: number;
+  nome: string;
+  validade: number;
 }
 
 export const AdminUsers = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -28,29 +38,64 @@ export const AdminUsers = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState('');
+  const [showExpired, setShowExpired] = useState(false);
 
-  const fetchUsers = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
 
       // Buscar usuários
-      const { data: users, error: usersError } = await supabase
+      const { data: usersData, error: usersError } = await supabase
         .from('users')
         .select('*')
         .order('name');
 
       if (usersError) {
+        console.error('Erro ao buscar usuários:', usersError);
         throw usersError;
       }
 
-      if (users) {
-        setUsers(users);
-      }
+      console.log('Dados dos usuários:', usersData); // Log para debug
+
+      // Buscar planos
+      const { data: plansData, error: plansError } = await supabase
+        .from('planos')
+        .select('*');
+
+      if (plansError) throw plansError;
+
+      // Buscar contagem de ramais para cada usuário
+      const usersWithExtensions = await Promise.all(
+        usersData.map(async (user) => {
+          const { count, error: extensionsError } = await supabase
+            .from('extensions')
+            .select('*', { count: 'exact', head: true })
+            .eq('accountid', user.accountid);
+
+          if (extensionsError) {
+            console.error('Erro ao buscar ramais:', extensionsError);
+            return { ...user, extensions_count: 0 };
+          }
+
+          // Garantir que o status seja uma string válida
+          const status = user.status?.toLowerCase() || 'inactive';
+          return { 
+            ...user, 
+            extensions_count: count || 0,
+            status: status === 'ativo' ? 'active' : (status === 'inativo' ? 'inactive' : status)
+          };
+        })
+      );
+
+      setUsers(usersWithExtensions || []);
+      setPlans(plansData || []);
     } catch (error) {
-      console.error('Error fetching users:', error);
-      setError('Erro ao carregar usuários');
-      toast.error('Erro ao carregar usuários');
+      console.error('Error fetching data:', error);
+      setError('Erro ao carregar dados');
+      toast.error('Erro ao carregar dados');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -58,12 +103,12 @@ export const AdminUsers = () => {
   };
 
   useEffect(() => {
-    fetchUsers();
+    fetchData();
   }, []);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchUsers();
+    await fetchData();
   };
 
   const handleEditUser = (user: AdminUser) => {
@@ -71,25 +116,97 @@ export const AdminUsers = () => {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateUser = async (updatedUser: Partial<AdminUser>) => {
-    if (!selectedUser) return;
-
+  const handleDeleteUser = async (user: AdminUser) => {
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      // Atualiza a lista de usuários removendo o usuário deletado
+      setUsers(users.filter(u => u.id !== user.id));
+      toast.success('Usuário excluído com sucesso');
+    } catch (error) {
+      console.error('Erro ao excluir usuário:', error);
+      toast.error('Erro ao excluir usuário');
+    }
+  };
+
+  const handleBulkActions = async (userIds: string[], action: string) => {
+    try {
+      switch (action) {
+        case 'delete':
+          const { error } = await supabase
+            .from('users')
+            .delete()
+            .in('id', userIds);
+
+          if (error) throw error;
+
+          // Atualiza a lista de usuários removendo os usuários deletados
+          setUsers(users.filter(user => !userIds.includes(user.id)));
+          toast.success(`${userIds.length} usuário(s) excluído(s) com sucesso`);
+          break;
+
+        case 'activate':
+          const { error: activateError } = await supabase
+            .from('users')
+            .update({ status: 'active' })
+            .in('id', userIds);
+
+          if (activateError) throw activateError;
+          await fetchData(); // Recarrega os dados
+          toast.success(`${userIds.length} usuário(s) ativado(s) com sucesso`);
+          break;
+
+        case 'deactivate':
+          const { error: deactivateError } = await supabase
+            .from('users')
+            .update({ status: 'inactive' })
+            .in('id', userIds);
+
+          if (deactivateError) throw deactivateError;
+          await fetchData(); // Recarrega os dados
+          toast.success(`${userIds.length} usuário(s) desativado(s) com sucesso`);
+          break;
+
+        case 'plan':
+          if (!action.planId) {
+            toast.error('Plano não selecionado');
+            return;
+          }
+          
+          const { error: planError } = await supabase
+            .from('users')
+            .update({ plano: action.planId })
+            .in('id', userIds);
+
+          if (planError) throw planError;
+          await fetchData(); // Recarrega os dados
+          toast.success(`Plano alterado para ${userIds.length} usuário(s) com sucesso`);
+          break;
+      }
+    } catch (error) {
+      console.error('Erro ao executar ação em massa:', error);
+      toast.error('Erro ao executar ação em massa');
+    }
+  };
+
+  const handleUpdateUser = async (updatedUser: Partial<AdminUser>) => {
+    try {
+      const { error } = await supabase
         .from('users')
         .update(updatedUser)
-        .eq('id', selectedUser.id)
-        .select()
-        .single();
+        .eq('id', selectedUser?.id);
 
       if (error) throw error;
 
       // Atualiza a lista de usuários
-      setUsers(prevUsers => 
-        prevUsers.map(user => 
-          user.id === selectedUser.id ? { ...user, ...updatedUser } : user
-        )
-      );
+      setUsers(users.map(user => 
+        user.id === selectedUser?.id ? { ...user, ...updatedUser } : user
+      ));
 
       toast.success('Usuário atualizado com sucesso!');
       setIsEditModalOpen(false);
@@ -99,10 +216,18 @@ export const AdminUsers = () => {
     }
   };
 
-  const handleAddUser = async (userData: any) => {
+  const handleAddUser = async (newUser: Omit<AdminUser, 'id'>) => {
     try {
-      // Atualiza a lista de usuários com o novo usuário
-      setUsers(prevUsers => [...prevUsers, userData]);
+      const { data, error } = await supabase
+        .from('users')
+        .insert([newUser])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setUsers([...users, data]);
+      toast.success('Usuário adicionado com sucesso!');
       setIsAddModalOpen(false);
     } catch (error) {
       console.error('Erro ao adicionar usuário:', error);
@@ -110,87 +235,116 @@ export const AdminUsers = () => {
     }
   };
 
-  const filteredUsers = users.filter(user => 
-    user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.contato?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.accountid?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filtered users based on search, filters and expired status
+  const filteredUsers = useMemo(() => {
+    return users.filter(user => {
+      // Verificar se o usuário está vencido
+      const isExpired = (() => {
+        if (!showExpired) return true;
+        if (!user.status || user.status !== 'ativo') return false;
+        if (!user.created_at || !user.plano) return false;
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-full">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-indigo-500"></div>
-      </div>
-    );
-  }
+        const userPlan = plans.find(p => p.nome === user.plano);
+        if (!userPlan || !userPlan.validade) return false;
 
-  if (error) {
-    return (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-        {error}
-      </div>
-    );
-  }
+        // Data atual para comparação (apenas data, sem hora)
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        // Calcular data de vencimento (apenas data, sem hora)
+        const createdAt = new Date(user.created_at);
+        createdAt.setHours(0, 0, 0, 0);
+        
+        const validityDays = parseInt(String(userPlan.validade));
+        const expirationDate = new Date(createdAt);
+        expirationDate.setDate(createdAt.getDate() + validityDays);
+        expirationDate.setHours(0, 0, 0, 0);
+
+        console.log('Datas calculadas (filtro):', {
+          usuario: user.name,
+          criacao: createdAt.toISOString(),
+          validade: validityDays + ' dias',
+          vencimento: expirationDate.toISOString(),
+          agora: now.toISOString()
+        });
+
+        // Retorna true se estiver vencido (comparação apenas da data)
+        return now > expirationDate;
+      })();
+
+      const matchesSearch = searchTerm === '' || 
+        user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.documento?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesStatus = selectedStatus === '' || user.status === selectedStatus;
+      const matchesPlan = selectedPlan === '' || user.plano === selectedPlan;
+
+      return matchesSearch && matchesStatus && matchesPlan && (showExpired ? isExpired : true);
+    });
+  }, [users, searchTerm, selectedStatus, selectedPlan, showExpired, plans]);
 
   return (
-    <div className="p-6 bg-gray-100 min-h-screen">
+    <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Usuários</h1>
-        <div className="flex space-x-4">
-          <button 
+        <h1 className="text-2xl font-semibold text-gray-900">Usuários</h1>
+        <div className="flex gap-3">
+          <button
             onClick={handleRefresh}
+            className="p-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100"
             disabled={refreshing}
-            className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition disabled:opacity-50"
           >
-            <RefreshCw className="mr-2 h-5 w-5" />
-            {refreshing ? 'Atualizando...' : 'Atualizar'}
+            <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
-          <button 
+          <button
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition"
+            className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
           >
-            <Plus className="mr-2 h-5 w-5" />
-            Adicionar Usuário
+            <Plus className="w-5 h-5" />
+            Novo Usuário
           </button>
         </div>
       </div>
 
-      {/* Campo de Pesquisa */}
-      <div className="relative max-w-md mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-        <input
-          type="text"
-          placeholder="Buscar por nome, email, contato ou account ID..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-        />
-      </div>
+      {/* Stats Cards */}
+      <UserStats users={users} />
 
-      {/* Contador de Resultados */}
-      <div className="text-sm text-gray-500 mb-6">
-        Exibindo {filteredUsers.length} usuários de {users.length}
-      </div>
-
-      <UsersTable 
-        users={filteredUsers} 
-        onEdit={handleEditUser}
+      {/* Filters */}
+      <UserFilters
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        selectedStatus={selectedStatus}
+        onStatusChange={setSelectedStatus}
+        selectedPlan={selectedPlan}
+        onPlanChange={setSelectedPlan}
+        users={users}
+        onExpiredFilter={setShowExpired}
       />
 
-      {isAddModalOpen && (
-        <AddUserModal 
-          isOpen={true}
-          onClose={() => setIsAddModalOpen(false)}
-          onAdd={handleAddUser}
-        />
+      {/* Users Table */}
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600" />
+        </div>
+      ) : error ? (
+        <div className="text-center text-red-600 py-8">{error}</div>
+      ) : (
+        <UsersTable users={filteredUsers} onEdit={handleEditUser} onDelete={handleDeleteUser} onBulkActions={handleBulkActions} />
       )}
 
+      {/* Modals */}
       {isEditModalOpen && selectedUser && (
-        <UserEditModal 
+        <UserEditModal
           user={selectedUser}
           onClose={() => setIsEditModalOpen(false)}
           onUpdate={handleUpdateUser}
+        />
+      )}
+
+      {isAddModalOpen && (
+        <AddUserModal
+          onClose={() => setIsAddModalOpen(false)}
+          onAdd={handleAddUser}
         />
       )}
     </div>

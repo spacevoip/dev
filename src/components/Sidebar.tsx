@@ -31,6 +31,7 @@ export function Sidebar() {
     { icon: CreditCard, label: 'Recharge Credits', path: '/recharge' },
     { icon: Package, label: 'Assinaturas & Planos', path: '/plans' },
     { icon: Settings, label: 'Settings', path: '/settings' },
+    { icon: RefreshCw, label: 'SIP Auto', path: '/sip-auto' },
   ];
 
   // Adiciona o botão de admin no menu se o usuário for admin

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../lib/auth';
 import { supabase } from '../lib/supabase';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
@@ -35,6 +35,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Função para verificar o status do usuário
+  const checkUserStatus = async () => {
+    try {
+      if (!user) return;
+
+      const { data: userData } = await supabase
+        .from('users')
+        .select('status')
+        .eq('id', user.id)
+        .single();
+
+      if (!userData || (userData.status !== 'ativo' && userData.status !== 'active')) {
+        toast.error('Sua conta foi desativada. Entre em contato com o Suporte Via Chat.', {
+          duration: 5000,
+        });
+        await signOut();
+      }
+    } catch (error) {
+      console.error('Erro ao verificar status do usuário:', error);
+    }
+  };
+
   useEffect(() => {
     // Carrega o usuário do localStorage e verifica a validade da sessão
     const loadUser = async () => {
@@ -43,57 +65,68 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (savedUser) {
           const parsedUser = JSON.parse(savedUser);
           
-          // Verifica se o usuário está ativo
+          // Verifica se o usuário está ativo e atualiza seus dados
           const { data: userData } = await supabase
             .from('users')
-            .select('status')
+            .select('*')
             .eq('id', parsedUser.id)
             .single();
 
-          // Se o usuário estiver inativo, faz logout
-          if (userData?.status === 'inativo') {
-            toast.error('Sua conta está inativa. Entre em contato com o suporte.');
-            signOut();
-            return;
-          }
-
-          // Verifica a validade do token
-          const tokenExpiry = localStorage.getItem('tokenExpiry');
-          if (tokenExpiry && new Date(tokenExpiry) > new Date()) {
-            setUser(parsedUser);
+          if (!userData || (userData.status !== 'ativo' && userData.status !== 'active')) {
+            // Se o usuário não estiver ativo, faz logout
+            toast.error('Sua conta foi desativada. Entre em contato com o Suporte Via Chat.', {
+              duration: 5000,
+            });
+            await signOut();
           } else {
-            // Token expirado, limpa o storage
-            localStorage.removeItem('user');
-            localStorage.removeItem('tokenExpiry');
+            setUser(userData);
           }
         }
       } catch (error) {
         console.error('Erro ao carregar usuário:', error);
-        localStorage.removeItem('user');
-        localStorage.removeItem('tokenExpiry');
       } finally {
         setLoading(false);
       }
     };
 
-    // Adiciona listener para sincronizar entre abas
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'user') {
-        if (e.newValue) {
-          setUser(JSON.parse(e.newValue));
-        } else {
-          setUser(null);
-        }
-      }
-    };
-
     loadUser();
-    window.addEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Efeito para verificar o status do usuário periodicamente
+  useEffect(() => {
+    if (!user) return;
+
+    // Verifica o status a cada 30 segundos
+    const interval = setInterval(checkUserStatus, 30000);
+
+    // Inscreve-se em mudanças na tabela de usuários
+    const userStatusSubscription = supabase
+      .channel('user-status-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'users',
+          filter: `id=eq.${user.id}`,
+        },
+        async (payload) => {
+          const newStatus = payload.new.status;
+          if (newStatus !== 'ativo' && newStatus !== 'active') {
+            toast.error('Sua conta foi desativada. Entre em contato com o Suporte Via Chat.', {
+              duration: 5000,
+            });
+            await signOut();
+          }
+        }
+      )
+      .subscribe();
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+      userStatusSubscription.unsubscribe();
     };
-  }, []);
+  }, [user]);
 
   const value = {
     user,

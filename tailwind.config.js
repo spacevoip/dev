@@ -17,6 +17,7 @@ export default {
       animation: {
         'ping': 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite',
         'bounce': 'bounce 1s infinite',
+        'fade-in': 'fade-in 0.3s ease-out',
       },
       keyframes: {
         ping: {
@@ -34,6 +35,10 @@ export default {
             transform: 'translateY(0)',
             animationTimingFunction: 'cubic-bezier(0, 0, 0.2, 1)',
           },
+        },
+        'fade-in': {
+          '0%': { opacity: '0', transform: 'translateY(-10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
       },
       maxWidth: {

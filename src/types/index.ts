@@ -8,12 +8,12 @@ export interface Extension {
 }
 
 export interface ActiveCall {
-  id: string;
-  from: string;
-  to: string;
-  duration: number;
-  status: 'active' | 'holding' | 'transferring';
-  startTime: Date;
+  channel: string;
+  ramal: string;
+  callerid: string;
+  destino: string;
+  duracao: string;
+  status: 'Chamando' | 'Falando';
 }
 
 export interface CallHistory {

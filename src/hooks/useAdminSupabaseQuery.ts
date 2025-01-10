@@ -1,6 +1,13 @@
 import { supabase } from '../lib/supabase';
 import { useEffect, useState } from 'react';
 
+interface QueryOptions {
+  select?: string;
+  additionalFilters?: (query: any) => any;
+  enabled?: boolean;
+  orderBy?: string;
+}
+
 // Tipo genérico para os dados retornados
 export interface AdminQueryResult<T> {
   data: T[] | null;
@@ -9,14 +16,12 @@ export interface AdminQueryResult<T> {
   refetch: () => Promise<void>;
 }
 
-export const useAdminSupabaseQuery = <T>(
-  table: string,
-  options: {
-    select?: string;
-    additionalFilters?: (query: any) => any;
-    enabled?: boolean;
-  } = {}
-): AdminQueryResult<T> => {
+export const useAdminSupabaseQuery = <T>({
+  table,
+  ...options
+}: {
+  table: string;
+} & QueryOptions): AdminQueryResult<T> => {
   const [data, setData] = useState<T[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +35,11 @@ export const useAdminSupabaseQuery = <T>(
         .from(table)
         .select(options.select || '*');
 
+      // Aplica ordenação se fornecida
+      if (options.orderBy) {
+        query = query.order(options.orderBy, { ascending: true });
+      }
+
       // Aplica filtros adicionais se fornecidos
       if (options.additionalFilters) {
         query = options.additionalFilters(query);
@@ -41,7 +51,8 @@ export const useAdminSupabaseQuery = <T>(
 
       setData(result as T[]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      console.error('Query error:', err);
+      setError(err instanceof Error ? err.message : 'Ocorreu um erro ao carregar os dados');
     } finally {
       setLoading(false);
     }
@@ -51,12 +62,12 @@ export const useAdminSupabaseQuery = <T>(
     if (options.enabled !== false) {
       fetchData();
     }
-  }, [options.enabled]);
+  }, [table, options.select, options.enabled]);
 
   return {
     data,
     loading,
     error,
-    refetch: fetchData,
+    refetch: fetchData
   };
 };

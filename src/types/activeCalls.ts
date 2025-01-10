@@ -1,14 +1,16 @@
 export interface ApiCall {
-  Channel: string;
+  Accountcode: string;
+  Application: string;
+  BridgeID: string;
   CallerID: string;
+  Channel: string;
+  Context: string;
+  Data: string;
   Duration: string;
   Extension: string;
+  PeerAccount: string;
+  Prio: string;
   State: string;
-  Accountcode: string;
-}
-
-export interface CallsResponse {
-  active_calls: ApiCall[];
 }
 
 export interface ActiveCall {

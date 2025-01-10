@@ -1,70 +1,60 @@
-import { useState, useEffect } from 'react';
-import { ExtensionStatusResponse } from '../types/extensionStatus';
+import { useQuery } from '@tanstack/react-query';
 
-interface ExtensionStatus {
+interface RamalStatus {
   agent_name: string;
   in_call: boolean;
   ramal: string;
   status: string;
 }
 
-interface ExtensionStatusResponse {
-  extensions: ExtensionStatus[];
-}
+export function useExtensionStatus(ramal?: string) {
+  return useQuery({
+    queryKey: ['extensionStatus', ramal],
+    queryFn: async () => {
+      if (!ramal) return { status: 'unknown' };
 
-export const useExtensionStatus = () => {
-  const [extensionStatuses, setExtensionStatuses] = useState<Record<string, string>>({});
-  const [error, setError] = useState<string | null>(null);
+      try {
+        const apiUrl = `https://intermed.appinovavoip.com:3000/ramais?ramal=${ramal}`;
+        
+        const response = await fetch(apiUrl, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'x-api-key': '191e8a1e-d313-4e12-b608-d1a759b1a106'
+          }
+        });
 
-  const fetchExtensionStatus = async () => {
-    try {
-      const response = await fetch('https://api.appinovavoip.com/list-extensions', {
-        mode: 'cors',
-        credentials: 'omit',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
+        if (!response.ok) {
+          console.warn(`Failed to fetch extension status for ramal ${ramal}: ${response.status}`);
+          return { status: 'unknown' };
         }
-      });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch extension status');
+        const data = await response.json();
+        
+        // Se data não for um array ou estiver vazio
+        if (!Array.isArray(data) || data.length === 0) {
+          return { status: 'unknown' };
+        }
+
+        const status = data[0];
+
+        return {
+          status: status.in_call ? 'em chamada' : status.status === 'online' ? 'online (livre)' : status.status,
+          agent_name: status.agent_name || '',
+          in_call: status.in_call || false,
+          ramal: status.ramal
+        };
+
+      } catch (error) {
+        console.error('Erro ao buscar status do ramal:', error);
+        return { status: 'unknown' };
       }
-      
-      const data: ExtensionStatusResponse = await response.json();
-      
-      // Criar um objeto com o número do ramal como chave e o status como valor
-      const statusMap = data.extensions.reduce((acc, ext) => {
-        acc[ext.ramal] = ext.status;
-        return acc;
-      }, {} as Record<string, string>);
-      
-      setExtensionStatuses(statusMap);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch extension status');
-    }
-  };
-
-  useEffect(() => {
-    // Buscar status inicial
-    fetchExtensionStatus();
-
-    // Configurar intervalo para atualizar a cada 5 segundos
-    const intervalId = setInterval(fetchExtensionStatus, 5000);
-
-    // Limpar intervalo quando o componente for desmontado
-    return () => clearInterval(intervalId);
-  }, []);
-
-  return {
-    extensionStatuses,
-    error,
-    fetchExtensionStatus
-  };
-};
+    },
+    refetchInterval: 5000,
+    enabled: !!ramal,
+    staleTime: 4000,
+    cacheTime: 1000 * 60 * 5,
+    retry: false, // Não tenta novamente em caso de erro
+    retryOnMount: false // Não tenta novamente ao montar
+  });
+}

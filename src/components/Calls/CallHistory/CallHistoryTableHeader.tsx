@@ -29,7 +29,15 @@ export const CallHistoryTableHeader: React.FC = () => {
           Status
         </th>
         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-          Gravação
+          <div className="flex items-center gap-1">
+            Gravação
+            <div className="group relative">
+              <HelpCircle className="h-4 w-4 text-gray-400" />
+              <div className="absolute hidden group-hover:block bg-black text-white text-xs rounded p-2 min-w-[200px] -left-1/2 transform -translate-x-1/2 mt-1 z-10">
+                Somente Chamadas Acima de 10 segundos
+              </div>
+            </div>
+          </div>
         </th>
         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
           Data/Hora

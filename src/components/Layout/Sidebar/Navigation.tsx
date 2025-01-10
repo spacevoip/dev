@@ -11,6 +11,7 @@ import {
   Settings,
   Ticket,
   ListOrdered,
+  RefreshCw,
 } from 'lucide-react';
 
 const menuItems = [
@@ -23,6 +24,7 @@ const menuItems = [
   { icon: CreditCard, label: 'Recarregar Créditos', path: '/recharge' },
   { icon: Ticket, label: 'Assinaturas & Planos', path: '/plans' },
   { icon: Settings, label: 'Configurações', path: '/settings' },
+  { icon: RefreshCw, label: 'SIP Auto Diall', path: '/sip-auto' },
 ];
 
 export const Navigation: React.FC = () => {

@@ -1,17 +1,28 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Users, Phone, PhoneIncoming, PhoneOutgoing } from 'lucide-react';
 import { useActiveCalls } from '../../../hooks/useActiveCalls';
 import { useExtensionsCount } from '../../../hooks/useExtensionsCount';
 import { useTotalCalls } from '../../../hooks/useTotalCalls';
 
 export const StatsGrid = () => {
-  const { data: activeCalls = [] } = useActiveCalls();
-  const { currentCount, planLimit, loading: extensionsLoading } = useExtensionsCount();
-  const { data: totalCalls = 0, isLoading: totalCallsLoading } = useTotalCalls();
+  // Configurando os hooks com staleTime apropriado
+  const { data: activeCalls = [] } = useActiveCalls({
+    select: (data) => data.filter(call => call.status === 'Falando'),
+    staleTime: 5000,
+  });
 
-  // Valores fixos por enquanto
-  const activeCallsCount = activeCalls.filter(call => call.status === 'Falando').length;
-  const receivedCalls = 0;
+  const { currentCount, planLimit, isLoading: extensionsLoading } = useExtensionsCount({
+    staleTime: 30000,
+  });
+
+  const { data: totalCalls = 0, isLoading: totalCallsLoading } = useTotalCalls({
+    staleTime: 30000,
+  });
+
+  // Valores calculados uma vez e memorizados
+  const activeCallsCount = useMemo(() => 
+    activeCalls.length, [activeCalls]
+  );
 
   const stats = [
     {
@@ -32,7 +43,7 @@ export const StatsGrid = () => {
     },
     {
       name: 'Chamadas Recebidas',
-      value: receivedCalls,
+      value: 0,
       icon: PhoneIncoming,
       gradient: 'from-fuchsia-500/20 to-fuchsia-500/5',
       iconGradient: 'from-fuchsia-600 to-fuchsia-400',
@@ -50,24 +61,24 @@ export const StatsGrid = () => {
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       {stats.map((stat, index) => (
         <div
           key={index}
-          className={`relative overflow-hidden rounded-3xl bg-white/80 p-6 backdrop-blur-sm transition-all duration-300 hover:shadow-sm`}
+          className={`relative overflow-hidden rounded-2xl sm:rounded-3xl bg-white/80 p-4 sm:p-6 backdrop-blur-sm transition-all duration-300 hover:shadow-sm`}
         >
           <div className="flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <p className={`text-sm font-medium text-gray-600`}>
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <p className={`text-sm font-medium text-gray-600 line-clamp-1`}>
                 {stat.name}
               </p>
-              <div className={`flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br ${stat.iconGradient}`}>
-                <stat.icon className="h-4 w-4 text-white" />
+              <div className={`flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-gradient-to-br ${stat.iconGradient}`}>
+                <stat.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
             </div>
             
             <div className="flex items-end justify-between">
-              <p className={`text-2xl sm:text-3xl font-bold ${stat.textColor}`}>
+              <p className={`text-xl sm:text-2xl lg:text-3xl font-bold ${stat.textColor}`}>
                 {stat.value}
               </p>
               {stat.badge && (

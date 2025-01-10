@@ -139,13 +139,10 @@ export const login = async (data: LoginData): Promise<{ user: User | null; error
     }
 
     // Verifica o status do usuário
-    if (userData.status === 'inativo') {
-      // Desconecta todos os dispositivos logados
-      await supabase.auth.signOut();
-      
+    if (userData.status !== 'ativo' && userData.status !== 'active') {
       return { 
         user: null, 
-        error: 'Conta inativa. Entre em contato com o suporte.' 
+        error: 'Conta inativa. Entre em contato com o Suporte Via Chat para mais informações.' 
       };
     }
 
@@ -192,26 +189,9 @@ export const getCurrentUser = async (): Promise<User | null> => {
 
 export const logout = async (): Promise<void> => {
   try {
-    // Atualiza o status do usuário para offline no banco de dados
-    const user = await getCurrentUser();
-    if (user) {
-      await supabase
-        .from('users')
-        .update({ 
-          last_logout: new Date().toISOString(),
-          status: 'offline'
-        })
-        .eq('id', user.id);
-    }
-
-    // Desconecta de todos os dispositivos
-    await supabase.auth.signOut();
-
-    // Limpa o localStorage
+    // Remove o usuário do localStorage
     localStorage.removeItem('user');
-    localStorage.removeItem('tokenExpiry');
-  } catch (error) {
-    console.error('Erro ao fazer logout:', error);
-    throw error;
+  } catch (err) {
+    console.error('Erro ao fazer logout:', err);
   }
 };

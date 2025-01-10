@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Mail, Lock, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
 import { login } from '../lib/auth';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 
 export const Login = () => {
@@ -10,6 +10,7 @@ export const Login = () => {
   const location = useLocation();
   const { setUser } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [credentials, setCredentials] = useState({
     email: '',
     password: ''
@@ -18,14 +19,23 @@ export const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
 
     try {
       const { user, error } = await login(credentials);
 
       if (error) {
+        if (error.includes('Conta inativa')) {
+          setError(error);
+        } else if (error.includes('senha')) {
+          setError('Senha inválida. Verifique se a senha está correta e tente novamente.');
+        } else if (error.includes('não encontrado')) {
+          setError('Email não encontrado. Verifique o email ou crie uma nova conta.');
+        } else {
+          setError(error);
+        }
         toast.error(error, {
           duration: 4000,
-          position: 'top-center',
         });
         setLoading(false);
         return;
@@ -37,7 +47,6 @@ export const Login = () => {
         
         toast.success('Login realizado com sucesso!', {
           duration: 2000,
-          position: 'top-center',
         });
         
         // Redireciona para a URL original ou para o dashboard
@@ -45,9 +54,9 @@ export const Login = () => {
         navigate(from, { replace: true });
       }
     } catch (err) {
+      setError('Erro inesperado ao fazer login. Por favor, tente novamente.');
       toast.error('Erro inesperado ao fazer login. Por favor, tente novamente.', {
         duration: 4000,
-        position: 'top-center',
       });
     } finally {
       setLoading(false);
@@ -69,6 +78,15 @@ export const Login = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="mt-12 space-y-8">
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                <div className="flex items-start">
+                  <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 mr-3 flex-shrink-0" />
+                  <p className="text-sm text-red-300">{error}</p>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-200 mb-2">
@@ -77,7 +95,10 @@ export const Login = () => {
                 <input
                   type="email"
                   value={credentials.email}
-                  onChange={(e) => setCredentials(prev => ({ ...prev, email: e.target.value.trim() }))}
+                  onChange={(e) => {
+                    setCredentials(prev => ({ ...prev, email: e.target.value.trim() }));
+                    setError('');
+                  }}
                   className="w-full bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-transparent transition-colors"
                   placeholder="Digite seu email"
                   required
@@ -92,7 +113,10 @@ export const Login = () => {
                 <input
                   type="password"
                   value={credentials.password}
-                  onChange={(e) => setCredentials(prev => ({ ...prev, password: e.target.value }))}
+                  onChange={(e) => {
+                    setCredentials(prev => ({ ...prev, password: e.target.value }));
+                    setError('');
+                  }}
                   className="w-full bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-transparent transition-colors"
                   placeholder="Digite sua senha"
                   required

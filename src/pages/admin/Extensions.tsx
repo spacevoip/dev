@@ -1,287 +1,147 @@
-import React, { useState } from 'react';
-import { Plus, Search, Phone, Edit, Trash2, CheckSquare, Square, AlertCircle } from 'lucide-react';
-import { useAdminSupabaseQuery } from '../../hooks/useAdminSupabaseQuery';
-import { useExtensionStatus } from '../../hooks/useExtensionStatus';
-import { Extension } from '../../types/extension';
-import { supabase } from '../../lib/supabase';
-import { AdminAddExtensionModal } from '../../components/Extensions/AdminAddExtensionModal';
-import { AdminEditExtensionModal } from '../../components/Extensions/AdminEditExtensionModal';
-import { toast } from 'sonner';
+import { useEffect, useState } from "react";
+import { useAdminSupabaseQuery } from "../../hooks/useAdminSupabaseQuery";
+import { Badge } from "../../components/ui/badge";
+import { Loader2 } from "lucide-react";
 
-export const AdminExtensions = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [editingExtension, setEditingExtension] = useState<Extension | null>(null);
-  const [selectedExtensions, setSelectedExtensions] = useState<string[]>([]);
-  const { extensionStatuses, error: statusError } = useExtensionStatus();
+interface Extension {
+  id: string;
+  ramal: string;
+  name: string;
+  email: string;
+  departamento: string;
+  created_at: string;
+}
 
-  const { data: extensions, loading, error, refetch } = useAdminSupabaseQuery<Extension>('extensions', {
-    select: '*',
-    options: {
-      count: 'exact'
-    }
+interface RamalStatus {
+  ramal: string;
+  status: string;
+}
+
+export function AdminExtensions() {
+  const [extensionsStatus, setExtensionsStatus] = useState<RamalStatus[]>([]);
+
+  const { data: extensions, loading, error } = useAdminSupabaseQuery<Extension>({
+    table: "extensions",
+    orderBy: "created_at",
   });
 
-  const handleDelete = async (extension: Extension) => {
-    const confirmDelete = window.confirm(`Tem certeza que deseja excluir o ramal ${extension.numero}?\nEsta ação não poderá ser desfeita.`);
-    
-    if (!confirmDelete) return;
-
+  // Função para buscar o status dos ramais
+  const fetchRamaisStatus = async (ramais: string[]) => {
     try {
-      const { error } = await supabase
-        .from('extensions')
-        .delete()
-        .eq('id', extension.id);
+      const ramaisStr = ramais.join(',');
+      const response = await fetch(
+        `https://intermed.appinovavoip.com:3000/ramais?ramal=${ramaisStr}`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'x-api-key': '191e8a1e-d313-4e12-b608-d1a759b1a106'
+          }
+        }
+      );
 
-      if (error) throw error;
-      
-      refetch();
-      toast.success(`Ramal ${extension.numero} excluído com sucesso!`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const statusData = data.map((item: any) => ({
+        ramal: item.ramal,
+        status: item.status
+      }));
+      setExtensionsStatus(statusData);
     } catch (error) {
-      console.error('Erro ao excluir ramal:', error);
-      toast.error('Erro ao excluir ramal. Por favor, tente novamente.');
+      console.error('Erro ao buscar status:', error);
     }
   };
 
-  const handleDeleteSelected = async () => {
-    if (selectedExtensions.length === 0) return;
+  // Efeito para buscar o status dos ramais
+  useEffect(() => {
+    if (extensions && extensions.length > 0) {
+      const ramais = extensions.map(ext => ext.ramal);
+      fetchRamaisStatus(ramais);
 
-    const confirmDelete = window.confirm(
-      `Tem certeza que deseja excluir ${selectedExtensions.length} ramal(is)?\nEsta ação não poderá ser desfeita.`
+      // Atualiza a cada 5 segundos
+      const interval = setInterval(() => {
+        fetchRamaisStatus(ramais);
+      }, 5000);
+
+      return () => clearInterval(interval);
+    }
+  }, [extensions]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+        <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
+      </div>
     );
-    
-    if (!confirmDelete) return;
+  }
 
-    try {
-      const { error } = await supabase
-        .from('extensions')
-        .delete()
-        .in('id', selectedExtensions);
-
-      if (error) throw error;
-      
-      setSelectedExtensions([]);
-      refetch();
-      toast.success(`${selectedExtensions.length} ramal(is) excluído(s) com sucesso!`);
-    } catch (error) {
-      console.error('Erro ao excluir ramais:', error);
-      toast.error('Erro ao excluir ramais. Por favor, tente novamente.');
-    }
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedExtensions.length === filteredExtensions.length) {
-      setSelectedExtensions([]);
-    } else {
-      setSelectedExtensions(filteredExtensions.map(ext => ext.id));
-    }
-  };
-
-  const toggleSelect = (id: string) => {
-    setSelectedExtensions(prev => 
-      prev.includes(id) 
-        ? prev.filter(extId => extId !== id)
-        : [...prev, id]
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          Erro ao carregar extensões: {error}
+        </div>
+      </div>
     );
-  };
+  }
 
-  const handleAddSuccess = () => {
-    refetch();
-    toast.success('Ramal adicionado com sucesso!');
-  };
-
-  const handleEditSuccess = () => {
-    refetch();
-    setEditingExtension(null);
-    toast.success('Ramal atualizado com sucesso!');
-  };
-
-  const filteredExtensions = extensions?.filter(ext => 
-    ext.numero?.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ext.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ext.accountid?.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
-
-  const getStatusStyle = (status: string) => {
-    if (status === 'Online (Livre)') {
-      return 'bg-emerald-100 text-emerald-700';
-    }
-    if (status === 'Em Chamada') {
-      return 'bg-orange-100 text-orange-700';
-    }
-    return 'bg-gray-100 text-gray-700';
-  };
+  if (!extensions || extensions.length === 0) {
+    return (
+      <div className="p-6">
+        <div className="bg-white rounded-lg shadow p-4 text-center text-gray-500">
+          Nenhuma extensão encontrada.
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Gerenciamento de Ramais</h2>
-          <p className="text-gray-500">
-            Visualize e gerencie todos os ramais do sistema ({extensions?.length || 0} ramais cadastrados)
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {selectedExtensions.length > 0 && (
-            <button 
-              onClick={handleDeleteSelected}
-              className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-            >
-              <Trash2 className="h-5 w-5" />
-              <span>Excluir Selecionados ({selectedExtensions.length})</span>
-            </button>
-          )}
-          <button 
-            onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded-lg hover:opacity-90 transition-opacity"
-          >
-            <Plus className="h-5 w-5" />
-            <span>Novo Ramal</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Search Bar */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-        <input
-          type="text"
-          placeholder="Buscar por número, nome ou ID da conta..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-        />
-      </div>
-
-      {/* Extensions Table */}
-      <div className="bg-white rounded-xl shadow-lg border border-gray-100">
+    <div className="p-6">
+      <div className="bg-white rounded-lg shadow">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-100">
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500">
-                  <button
-                    onClick={toggleSelectAll}
-                    className="p-1 hover:bg-gray-100 rounded transition-colors"
-                    title={selectedExtensions.length === filteredExtensions.length ? "Desmarcar todos" : "Selecionar todos"}
-                  >
-                    {selectedExtensions.length === filteredExtensions.length ? (
-                      <CheckSquare className="h-5 w-5 text-violet-500" />
-                    ) : (
-                      <Square className="h-5 w-5 text-gray-400" />
-                    )}
-                  </button>
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500">Ramal</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500">Nome</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500">Account ID</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500">Status</th>
-                <th className="px-6 py-4 text-right text-xs font-medium text-gray-500">Ações</th>
+              <tr className="border-b">
+                <th className="p-4 text-left">EXTENSION</th>
+                <th className="p-4 text-left">NAME</th>
+                <th className="p-4 text-left">EMAIL</th>
+                <th className="p-4 text-left">DEPARTMENT</th>
+                <th className="p-4 text-left">STATUS</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
-                    <div className="flex items-center justify-center space-x-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-violet-500"></div>
-                      <span>Carregando ramais...</span>
-                    </div>
-                  </td>
-                </tr>
-              ) : error ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center text-red-500">
-                    <div className="flex items-center justify-center gap-2">
-                      <AlertCircle className="h-5 w-5" />
-                      <span>Erro ao carregar ramais: {error}</span>
-                    </div>
-                  </td>
-                </tr>
-              ) : filteredExtensions.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
-                    {searchTerm ? 'Nenhum ramal encontrado para esta busca' : 'Nenhum ramal cadastrado'}
-                  </td>
-                </tr>
-              ) : (
-                filteredExtensions.map((ext) => {
-                  const status = statusError ? 'Erro ao carregar status' : (extensionStatuses[ext.numero] || 'Desconhecido');
-                  return (
-                    <tr key={ext.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <button
-                          onClick={() => toggleSelect(ext.id)}
-                          className="p-1 hover:bg-gray-100 rounded transition-colors"
-                          title={selectedExtensions.includes(ext.id) ? "Desmarcar" : "Selecionar"}
-                        >
-                          {selectedExtensions.includes(ext.id) ? (
-                            <CheckSquare className="h-5 w-5 text-violet-500" />
-                          ) : (
-                            <Square className="h-5 w-5 text-gray-400" />
-                          )}
-                        </button>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
-                            <Phone className="h-4 w-4 text-white" />
-                          </div>
-                          <span className="font-medium text-gray-900">{ext.numero}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-gray-900">{ext.nome}</td>
-                      <td className="px-6 py-4 text-gray-500">
-                        <span className="font-mono text-sm">{ext.accountid}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusStyle(status)}`}>
-                          {status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <button 
-                            onClick={() => setEditingExtension(ext)}
-                            className="p-2 text-gray-400 hover:text-violet-600 rounded-lg hover:bg-violet-50 transition-colors"
-                            title="Editar ramal"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button 
-                            onClick={() => handleDelete(ext)}
-                            className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                            title="Excluir ramal"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
+            <tbody>
+              {extensions.map((extension) => {
+                const status = extensionsStatus.find(s => s.ramal === extension.ramal);
+                
+                let badgeColor = 'bg-gray-500';
+                let statusText = 'Offline';
+                
+                if (status?.status?.includes('Online')) {
+                  badgeColor = 'bg-green-500';
+                  statusText = status.status;
+                }
+
+                return (
+                  <tr key={extension.id} className="border-b hover:bg-gray-50">
+                    <td className="p-4">{extension.ramal}</td>
+                    <td className="p-4">{extension.name}</td>
+                    <td className="p-4">{extension.email}</td>
+                    <td className="p-4">{extension.departamento}</td>
+                    <td className="p-4">
+                      <Badge className={`${badgeColor} text-white`}>
+                        {statusText}
+                      </Badge>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
-
-      {/* Modal de Adicionar Ramal */}
-      <AdminAddExtensionModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onSuccess={handleAddSuccess}
-      />
-
-      {/* Modal de Editar Ramal */}
-      {editingExtension && (
-        <AdminEditExtensionModal
-          isOpen={true}
-          onClose={() => setEditingExtension(null)}
-          onSuccess={handleEditSuccess}
-          extension={editingExtension}
-        />
-      )}
     </div>
   );
-};
+}

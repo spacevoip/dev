@@ -1,16 +1,18 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
+  requireReseller?: boolean;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
   children, 
-  requireAdmin = false 
+  requireAdmin = false,
+  requireReseller = false
 }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -29,9 +31,18 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
-  // Se requer admin e o usuário não é admin, redireciona para o dashboard
+  // Se requer admin e o usuário não é admin
   if (requireAdmin && user.role !== 'admin') {
     toast.error('Acesso restrito a administradores');
+    if (user.role === 'reseller') {
+      return <Navigate to="/reseller/dashboard" replace />;
+    }
+    return <Navigate to="/dash" replace />;
+  }
+
+  // Se requer reseller e o usuário não é reseller nem admin
+  if (requireReseller && user.role !== 'reseller' && user.role !== 'admin') {
+    toast.error('Acesso restrito a revendedores');
     return <Navigate to="/dash" replace />;
   }
 

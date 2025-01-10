@@ -1,5 +1,5 @@
 export interface ExtensionRecord {
-  id?: number
+  id?: string
   nome: string
   callerid: string
   senha: string
@@ -8,5 +8,6 @@ export interface ExtensionRecord {
   status: string
   usuario_id: string
   max_contacts: number
+  snystatus?: string
   created_at?: string
 }

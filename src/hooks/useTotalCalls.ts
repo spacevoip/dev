@@ -2,20 +2,25 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
-export function useTotalCalls() {
+interface UseTotalCallsOptions {
+  staleTime?: number;
+}
+
+export function useTotalCalls(options: UseTotalCallsOptions = {}) {
   const { user } = useAuth();
+  const accountId = user?.accountid;
 
   return useQuery({
-    queryKey: ['totalCalls', user?.accountid],
+    queryKey: ['totalCalls', accountId],
     queryFn: async () => {
-      if (!user?.accountid) {
+      if (!accountId) {
         return 0;
       }
 
       const { count, error } = await supabase
         .from('cdr')
         .select('*', { count: 'exact', head: true })
-        .eq('accountid', user.accountid);
+        .eq('accountid', accountId);
 
       if (error) {
         console.error('Erro ao buscar total de chamadas:', error);
@@ -24,6 +29,8 @@ export function useTotalCalls() {
 
       return count || 0;
     },
-    refetchInterval: 5000, // Atualiza a cada 5 segundos
+    refetchInterval: 5000,
+    enabled: !!accountId,
+    staleTime: options.staleTime,
   });
 }

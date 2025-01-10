@@ -3,7 +3,6 @@ import { X, UserPlus } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { generateUniqueAccountId } from '../../../lib/auth';
-import bcrypt from 'bcryptjs';
 
 interface AddUserModalProps {
   isOpen: boolean;
@@ -32,18 +31,30 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
     setLoading(true);
 
     try {
+      // Primeiro, cria o usuário no Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+      });
+
+      if (authError) throw new Error(authError.message);
+      if (!authData.user) throw new Error('Failed to create user');
+
       // Gera um accountId único
       const accountId = await generateUniqueAccountId();
 
-      // Hash da senha
-      const hashedPassword = await bcrypt.hash(userData.password, 10);
-
       // Prepara dados do usuário
       const newUserData = {
-        ...userData,
-        password: hashedPassword,
+        id: authData.user.id,
+        name: userData.name,
+        email: userData.email,
+        contato: userData.contato,
+        documento: userData.documento,
+        plano: userData.plano,
+        status: userData.status,
         accountid: accountId,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        role: 'user'
       };
 
       // Insere no Supabase
@@ -55,28 +66,12 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
 
       if (error) throw error;
 
-      // Chama função de callback
-      onAdd(data);
-
-      // Limpa formulário
-      setUserData({
-        name: '',
-        email: '',
-        contato: '',
-        documento: '',
-        password: '',
-        plano: 'Básico',
-        status: 'ativo'
-      });
-
-      // Notificação de sucesso
       toast.success('Usuário adicionado com sucesso!');
-
-      // Fecha modal
+      onAdd(data);
       onClose();
     } catch (error) {
-      console.error('Erro ao adicionar usuário:', error);
-      toast.error('Erro ao adicionar usuário. Tente novamente.');
+      console.error('Error adding user:', error);
+      toast.error(error instanceof Error ? error.message : 'Erro ao adicionar usuário');
     } finally {
       setLoading(false);
     }
@@ -85,126 +80,132 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-auto overflow-hidden animate-fade-in">
-        <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 flex justify-between items-center">
-          <div className="flex items-center space-x-4">
-            <UserPlus className="h-8 w-8" />
-            <h2 className="text-2xl font-bold">Adicionar Novo Usuário</h2>
-          </div>
-          <button 
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold flex items-center">
+            <UserPlus className="mr-2 h-5 w-5" />
+            Adicionar Usuário
+          </h2>
+          <button
             onClick={onClose}
-            className="text-white hover:bg-white/20 rounded-full p-2 transition"
+            className="text-gray-500 hover:text-gray-700"
           >
-            <X className="h-6 w-6" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div className="grid grid-cols-2 gap-6">
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nome Completo
+              <label className="block text-sm font-medium text-gray-700">
+                Nome
               </label>
               <input
                 type="text"
-                value={userData.name}
-                onChange={(e) => setUserData(prev => ({ ...prev, name: e.target.value }))}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                placeholder="Digite o nome completo"
                 required
+                value={userData.name}
+                onChange={(e) => setUserData({ ...userData, name: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700">
                 Email
               </label>
               <input
                 type="email"
+                required
                 value={userData.email}
-                onChange={(e) => setUserData(prev => ({ ...prev, email: e.target.value }))}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                placeholder="Digite o email"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Telefone
-              </label>
-              <input
-                type="tel"
-                value={userData.contato}
-                onChange={(e) => setUserData(prev => ({ ...prev, contato: e.target.value }))}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                placeholder="(XX) XXXXX-XXXX"
-                required
+                onChange={(e) => setUserData({ ...userData, email: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                CPF
+              <label className="block text-sm font-medium text-gray-700">
+                Contato
               </label>
               <input
                 type="text"
-                value={userData.documento}
-                onChange={(e) => setUserData(prev => ({ ...prev, documento: e.target.value }))}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                placeholder="000.000.000-00"
+                required
+                value={userData.contato}
+                onChange={(e) => setUserData({ ...userData, contato: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Plano
+              <label className="block text-sm font-medium text-gray-700">
+                Documento
               </label>
-              <select
-                value={userData.plano}
-                onChange={(e) => setUserData(prev => ({ ...prev, plano: e.target.value }))}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              >
-                <option value="Básico">Básico</option>
-                <option value="Intermediário">Intermediário</option>
-                <option value="Avançado">Avançado</option>
-              </select>
+              <input
+                type="text"
+                required
+                value={userData.documento}
+                onChange={(e) => setUserData({ ...userData, documento: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700">
                 Senha
               </label>
               <input
                 type="password"
-                value={userData.password}
-                onChange={(e) => setUserData(prev => ({ ...prev, password: e.target.value }))}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                placeholder="Digite uma senha"
                 required
+                value={userData.password}
+                onChange={(e) => setUserData({ ...userData, password: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Plano
+              </label>
+              <select
+                value={userData.plano}
+                onChange={(e) => setUserData({ ...userData, plano: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              >
+                <option value="Básico">Básico</option>
+                <option value="Premium">Premium</option>
+                <option value="Enterprise">Enterprise</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Status
+              </label>
+              <select
+                value={userData.status}
+                onChange={(e) => setUserData({ ...userData, status: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              >
+                <option value="ativo">Ativo</option>
+                <option value="inativo">Inativo</option>
+              </select>
             </div>
           </div>
 
-          <div className="flex justify-end space-x-4 pt-4">
+          <div className="mt-6 flex justify-end space-x-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition"
+              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:opacity-90 transition disabled:opacity-50"
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
             >
-              {loading ? 'Adicionando...' : 'Adicionar Usuário'}
+              {loading ? 'Adicionando...' : 'Adicionar'}
             </button>
           </div>
         </form>

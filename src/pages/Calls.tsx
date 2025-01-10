@@ -1,11 +1,47 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import ActiveCallsTable from '../components/Calls/ActiveCallsTable';
+import { CallsStats } from '../components/Calls/CallsStats';
+import { CallsFilters } from '../components/Calls/CallsFilters';
 import { useActiveCalls } from '../hooks/useActiveCalls';
+import { RefreshCw } from 'lucide-react';
 
 export const Calls = () => {
   const { user, loading: authLoading } = useAuth();
-  const { data: calls = [], isLoading: callsLoading, error } = useActiveCalls();
+  const { data: calls = [], isLoading: callsLoading, error, refetch } = useActiveCalls();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [lastRefresh, setLastRefresh] = useState(Date.now());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Filtrar chamadas
+  const filteredCalls = calls.filter(call => {
+    const matchesSearch = searchQuery 
+      ? (call.ramal?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+         call.destino?.toLowerCase().includes(searchQuery.toLowerCase()))
+      : true;
+
+    const matchesStatus = statusFilter
+      ? call.status === statusFilter
+      : true;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  // Atualizar com efeito de rotação
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await refetch();
+    setLastRefresh(Date.now());
+    // Aguarda um pouco para o efeito ser visível
+    setTimeout(() => setIsRefreshing(false), 1000);
+  }, [refetch]);
+
+  // Calcular tempo desde último refresh
+  const getRefreshTime = () => {
+    const seconds = Math.floor((Date.now() - lastRefresh) / 1000);
+    return `${seconds}s atrás`;
+  };
 
   // Mostra loading enquanto carrega autenticação ou chamadas
   if (authLoading || callsLoading) {
@@ -37,19 +73,40 @@ export const Calls = () => {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Seção Principal */}
-      <div className="grid grid-cols-1 gap-6">
-        {/* Tabela de Chamadas Ativas */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="border-b border-gray-100 px-6 py-4">
-            <h2 className="text-lg font-semibold text-gray-900">Chamadas em Andamento</h2>
-            <p className="text-sm text-gray-500">
-              Visualize e gerencie todas as chamadas ativas no momento
-            </p>
-          </div>
-          <div className="p-6">
-            <ActiveCallsTable />
-          </div>
+      {/* Header com Título e Refresh */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Chamadas em Andamento</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Visualize e gerencie todas as chamadas ativas no momento
+          </p>
+        </div>
+        <button
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className={`inline-flex items-center justify-center p-2 text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors ${
+            isRefreshing ? 'animate-spin' : ''
+          }`}
+          title="Atualizar"
+        >
+          <RefreshCw className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* Cards de Estatísticas */}
+      <CallsStats calls={calls} />
+
+      {/* Filtros */}
+      <CallsFilters
+        onSearch={setSearchQuery}
+        onStatusFilter={setStatusFilter}
+        selectedStatus={statusFilter}
+      />
+
+      {/* Tabela de Chamadas */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-6">
+          <ActiveCallsTable calls={filteredCalls} />
         </div>
       </div>
 

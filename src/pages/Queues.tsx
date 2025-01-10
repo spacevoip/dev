@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Plus, MoreVertical, Pencil, Trash2, Power, HelpCircle, RefreshCw, X } from 'lucide-react';
 import { useClickOutside } from '../hooks/useClickOutside';
-import { useQueues, QueueData } from '../hooks/useQueues';
-import { toast } from 'react-hot-toast';
+import { useQueuesRealtime } from '../hooks/useQueuesRealtime';
 import { useExtensions } from '../hooks/useExtensions';
+import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
 import { Dialog } from '@headlessui/react';
 
@@ -148,7 +148,7 @@ interface CreateQueueModalProps {
 
 const CreateQueueModal: React.FC<CreateQueueModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { user } = useAuth();
-  const { extensions, loading: loadingExtensions, error: extensionsError } = useExtensions();
+  const { data: extensions = [], isLoading: loadingExtensions } = useExtensions();
   const [formData, setFormData] = useState({
     nome: '',
     estrategia: 'ringall',
@@ -203,14 +203,15 @@ const CreateQueueModal: React.FC<CreateQueueModalProps> = ({ isOpen, onClose, on
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-md mx-4">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Criar Nova Fila</h2>
+    <Dialog open={isOpen} onClose={onClose} className="relative z-50">
+      <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+          <div className="flex items-center justify-between mb-4">
+            <Dialog.Title className="text-lg font-medium text-gray-900">
+              Criar Nova Fila
+            </Dialog.Title>
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-500"
@@ -229,7 +230,7 @@ const CreateQueueModal: React.FC<CreateQueueModalProps> = ({ isOpen, onClose, on
                 id="nome"
                 value={formData.nome}
                 onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-violet-500 focus:border-violet-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                 required
               />
             </div>
@@ -255,76 +256,288 @@ const CreateQueueModal: React.FC<CreateQueueModalProps> = ({ isOpen, onClose, on
                 <div className="text-center py-4">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-violet-500 mx-auto"></div>
                 </div>
+              ) : extensions.length === 0 ? (
+                <div className="text-center py-4 text-gray-500">
+                  Nenhum ramal disponível
+                </div>
               ) : (
-                <div className="grid grid-cols-2 gap-3 p-3">
+                <div className="grid grid-cols-2 gap-2 max-h-[250px] overflow-y-auto p-2">
                   {extensions.map((extension) => {
-                    console.log('Extension data:', extension); // Debug log
                     const isSelected = selectedRamais.includes(extension.numero);
+                    
+                    const getStatusColor = (status: string) => {
+                      switch (status) {
+                        case 'Online (Livre)':
+                          return 'bg-green-500'; // Online - Verde
+                        case 'Em Chamada':
+                          return 'bg-orange-500'; // Em Chamada - Laranja
+                        case 'Offline':
+                          return 'bg-gray-300'; // Offline - Cinza
+                        default:
+                          return 'bg-gray-300';
+                      }
+                    };
+
+                    const getStatusText = (status: string) => {
+                      switch (status) {
+                        case 'Online (Livre)':
+                          return 'Disponível';
+                        case 'Em Chamada':
+                          return 'Em Chamada';
+                        case 'Offline':
+                          return 'Offline';
+                        default:
+                          return status || 'Offline';
+                      }
+                    };
+
                     return (
                       <div
                         key={extension.id}
                         onClick={(e) => handleExtensionToggle(extension, e)}
-                        className={`
-                          relative p-3 rounded-lg cursor-pointer select-none transition-all duration-200
+                        className={`flex items-center p-3 rounded-md cursor-pointer transition-colors
                           ${isSelected 
-                            ? 'bg-violet-50 border-2 border-violet-500 shadow-sm' 
-                            : 'bg-gray-50 border border-gray-200 hover:border-violet-300 hover:bg-violet-50/50'
+                            ? 'bg-violet-100 border border-violet-300' 
+                            : 'bg-gray-50 border border-gray-200 hover:border-violet-200 hover:bg-violet-50'
                           }
                         `}
                       >
-                        {isSelected && (
-                          <div className="absolute top-2 right-2">
-                            <div className="h-2 w-2 rounded-full bg-violet-500"></div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-900">
+                              {extension.numero}
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className={`w-2 h-2 rounded-full ${getStatusColor(extension.snystatus)}`} />
+                              <span className="text-xs text-gray-500">
+                                {getStatusText(extension.snystatus)}
+                              </span>
+                            </div>
                           </div>
-                        )}
-                        <div className="flex flex-col">
-                          <span className="text-base font-medium text-gray-900">
-                            {extension.numero} <span className="text-gray-500">({extension.nome})</span>
+                          <span className="text-xs text-gray-500 mt-0.5 block">
+                            {extension.nome || 'Sem nome'}
                           </span>
                         </div>
                       </div>
                     );
                   })}
-                  {extensions.length === 0 && (
-                    <div className="col-span-2 p-4 text-sm text-gray-500 text-center bg-gray-50 rounded-lg">
-                      Nenhum ramal encontrado
-                    </div>
-                  )}
                 </div>
               )}
             </div>
 
-            <div className="flex justify-end gap-3 pt-4">
+            <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting || loadingExtensions || selectedRamais.length === 0}
-                className={`px-4 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg transition-colors ${
-                  isSubmitting || loadingExtensions || selectedRamais.length === 0
-                    ? 'bg-violet-400 cursor-not-allowed'
-                    : 'bg-violet-600 hover:bg-violet-700'
-                }`}
+                disabled={isSubmitting || selectedRamais.length === 0}
+                className={`px-4 py-2 text-sm font-medium text-white bg-violet-600 rounded-md hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center`}
               >
                 {isSubmitting ? (
-                  <div className="flex items-center">
-                    <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
-                    Criando...
-                  </div>
+                  <>
+                    <div className="mr-2 animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Salvando...
+                  </>
                 ) : (
                   'Criar Fila'
                 )}
               </button>
             </div>
           </form>
-        </div>
+        </Dialog.Panel>
       </div>
-    </div>
+    </Dialog>
+  );
+};
+
+interface EditQueueModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  queue: Queue;
+}
+
+const EditQueueModal: React.FC<EditQueueModalProps> = ({ isOpen, onClose, onSuccess, queue }) => {
+  const { user } = useAuth();
+  const { data: extensions = [] } = useExtensions();
+  const [formData, setFormData] = useState({
+    nome: queue.nome,
+    estrategia: queue.estrategia,
+  });
+
+  const selectedRamaisArray = useMemo(() => {
+    return queue.ramais ? queue.ramais.split(',') : [];
+  }, [queue.ramais]);
+
+  const [selectedRamais, setSelectedRamais] = useState<string[]>(selectedRamaisArray);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleExtensionToggle = (extension: any, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    setSelectedRamais(prev => {
+      const isCurrentlySelected = prev.includes(extension.numero);
+      if (isCurrentlySelected) {
+        return prev.filter(num => num !== extension.numero);
+      } else {
+        return [...prev, extension.numero];
+      }
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.accountid || selectedRamais.length === 0) return;
+
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('queues')
+        .update({
+          nome: formData.nome,
+          estrategia: formData.estrategia,
+          ramais: selectedRamais.join(','),
+        })
+        .eq('id', queue.id)
+        .eq('accountid', user.accountid);
+
+      if (error) throw error;
+
+      toast.success('Fila atualizada com sucesso!');
+      onSuccess();
+      onClose();
+    } catch (err) {
+      console.error('Error updating queue:', err);
+      toast.error('Erro ao atualizar fila');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onClose={onClose} className="relative z-50">
+      <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+          <div className="flex items-center justify-between mb-4">
+            <Dialog.Title className="text-lg font-medium text-gray-900">
+              Editar Fila
+            </Dialog.Title>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-500"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="nome" className="block text-sm font-medium text-gray-700 mb-1">
+                Nome da Fila
+              </label>
+              <input
+                type="text"
+                id="nome"
+                value={formData.nome}
+                onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="estrategia" className="block text-sm font-medium text-gray-700 mb-1">
+                Estratégia
+              </label>
+              <input
+                type="text"
+                id="estrategia"
+                value={formData.estrategia}
+                disabled
+                className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Ramais
+              </label>
+              <div className="grid grid-cols-2 gap-2 max-h-[250px] overflow-y-auto p-2">
+                {extensions.map((extension) => {
+                  const isSelected = selectedRamais.includes(extension.numero);
+                  return (
+                    <div
+                      key={extension.id}
+                      onClick={(e) => handleExtensionToggle(extension, e)}
+                      className={`flex items-center p-3 rounded-md cursor-pointer transition-colors
+                        ${isSelected 
+                          ? 'bg-violet-100 border border-violet-300' 
+                          : 'bg-gray-50 border border-gray-200 hover:border-violet-200 hover:bg-violet-50'
+                        }
+                      `}
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-900">
+                            {extension.numero}
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`w-2 h-2 rounded-full ${
+                              extension.snystatus === 'Online (Livre)' ? 'bg-green-500' :
+                              extension.snystatus === 'Em Chamada' ? 'bg-orange-500' :
+                              'bg-gray-300'
+                            }`} />
+                            <span className="text-xs text-gray-500">
+                              {extension.snystatus === 'Online (Livre)' ? 'Disponível' :
+                               extension.snystatus === 'Em Chamada' ? 'Em Chamada' :
+                               'Offline'}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-xs text-gray-500 mt-0.5 block">
+                          {extension.nome || 'Sem nome'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting || selectedRamais.length === 0}
+                className={`px-4 py-2 text-sm font-medium text-white bg-violet-600 rounded-md hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center`}
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="mr-2 animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Salvando...
+                  </>
+                ) : (
+                  'Salvar Alterações'
+                )}
+              </button>
+            </div>
+          </form>
+        </Dialog.Panel>
+      </div>
+    </Dialog>
   );
 };
 
@@ -339,241 +552,12 @@ interface Queue {
   updated_at?: string;
 }
 
-interface EditQueueModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
-  queue: Queue;
-}
-
-const EditQueueModal: React.FC<EditQueueModalProps> = ({ isOpen, onClose, onSuccess, queue }) => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { extensions } = useExtensions();
-  const [queueName, setQueueName] = useState(queue.nome);
-
-  // Pega os ramais da fila atual
-  const [queueRamais, setQueueRamais] = useState<string[]>(() => {
-    try {
-      if (!queue.ramais) return [];
-      if (typeof queue.ramais !== 'string') {
-        console.error('Queue ramais is not a string:', queue.ramais);
-        return [];
-      }
-      return queue.ramais.split(',').map(r => r.trim()).filter(Boolean);
-    } catch (error) {
-      console.error('Error parsing queue ramais:', error);
-      return [];
-    }
-  });
-
-  // Debug logs
-  useEffect(() => {
-    console.log('Queue data:', queue);
-    console.log('Queue ramais:', queue.ramais);
-    console.log('Queue ramais type:', typeof queue.ramais);
-    console.log('Parsed queue ramais:', queueRamais);
-  }, [queue, queueRamais]);
-
-  // Filtra os ramais disponíveis (que não estão na fila)
-  const availableExtensions = useMemo(() => {
-    return extensions.filter(ext => !queueRamais.includes(ext.numero));
-  }, [extensions, queueRamais]);
-
-  // Mostra os ramais que estão na fila
-  const queueExtensions = useMemo(() => {
-    return extensions.filter(ext => queueRamais.includes(ext.numero));
-  }, [extensions, queueRamais]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!queueName.trim()) {
-      toast.error('O nome da fila é obrigatório');
-      return;
-    }
-    
-    setIsSubmitting(true);
-
-    try {
-      const { error } = await supabase
-        .from('queues')
-        .update({
-          nome: queueName.trim(),
-          ramais: queueRamais.join(',')
-        })
-        .eq('id', queue.id);
-
-      if (error) throw error;
-
-      toast.success('Fila atualizada com sucesso!');
-      onSuccess();
-    } catch (err) {
-      console.error('Error updating queue:', err);
-      toast.error('Erro ao atualizar fila');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <Dialog open={isOpen} onClose={onClose}>
-      <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-      <div className="fixed inset-0 flex items-center justify-center p-4">
-        <Dialog.Panel className="mx-auto max-w-3xl w-full rounded-xl bg-white shadow-2xl">
-          <div className="p-6">
-            <div className="border-b border-gray-100 pb-6">
-              <Dialog.Title className="text-xl font-semibold text-gray-900">
-                Editar Fila
-              </Dialog.Title>
-              <Dialog.Description className="mt-1 text-sm text-gray-500">
-                Configure os detalhes e ramais desta fila de atendimento.
-              </Dialog.Description>
-            </div>
-
-            <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-              {/* Nome da Fila */}
-              <div>
-                <label htmlFor="queueName" className="block text-sm font-medium text-gray-700">
-                  Nome da Fila
-                </label>
-                <input
-                  type="text"
-                  id="queueName"
-                  value={queueName}
-                  onChange={(e) => setQueueName(e.target.value)}
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                  placeholder="Digite o nome da fila"
-                />
-              </div>
-
-              {/* Grid de Ramais */}
-              <div className="grid grid-cols-2 gap-6">
-                {/* Ramais na fila */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ramais na Fila
-                  </label>
-                  <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
-                    <div className="divide-y divide-gray-100">
-                      {queueExtensions.map((ext) => (
-                        <div
-                          key={ext.numero}
-                          className="flex items-center justify-between p-3 hover:bg-gray-50 transition-colors"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100">
-                              <span className="text-sm font-medium text-violet-700">{ext.numero.slice(0, 2)}</span>
-                            </div>
-                            <span className="text-sm font-medium text-gray-900">{ext.numero}</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setQueueRamais(current =>
-                                current.filter(r => r !== ext.numero)
-                              );
-                            }}
-                            className="text-gray-400 hover:text-red-600 transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
-                      {queueExtensions.length === 0 && (
-                        <div className="p-8 text-center">
-                          <div className="mx-auto h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-                            <Power className="h-6 w-6 text-gray-400" />
-                          </div>
-                          <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum ramal adicionado</h3>
-                          <p className="mt-1 text-sm text-gray-500">
-                            Adicione ramais da lista ao lado para começar.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Ramais disponíveis */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ramais Disponíveis
-                  </label>
-                  <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
-                    <div className="divide-y divide-gray-100">
-                      {availableExtensions.map((ext) => (
-                        <button
-                          key={ext.numero}
-                          type="button"
-                          onClick={() => {
-                            setQueueRamais(current => [...current, ext.numero]);
-                          }}
-                          className="flex items-center justify-between w-full p-3 hover:bg-gray-50 transition-colors"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100">
-                              <span className="text-sm font-medium text-gray-700">{ext.numero.slice(0, 2)}</span>
-                            </div>
-                            <span className="text-sm font-medium text-gray-900">{ext.numero}</span>
-                          </div>
-                          <Plus className="h-4 w-4 text-gray-400" />
-                        </button>
-                      ))}
-                      {availableExtensions.length === 0 && (
-                        <div className="p-8 text-center">
-                          <div className="mx-auto h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-                            <Power className="h-6 w-6 text-gray-400" />
-                          </div>
-                          <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum ramal disponível</h3>
-                          <p className="mt-1 text-sm text-gray-500">
-                            Todos os ramais já foram adicionados.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Botões */}
-              <div className="flex justify-end space-x-3 pt-6 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !queueName.trim()}
-                  className={`inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-violet-600 border border-transparent rounded-lg shadow-sm hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 transition-colors ${
-                    isSubmitting || !queueName.trim() ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="mr-2 animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Salvando...
-                    </>
-                  ) : (
-                    'Salvar Alterações'
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </Dialog.Panel>
-      </div>
-    </Dialog>
-  );
-};
-
 export const Queues = () => {
   const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [editingQueue, setEditingQueue] = useState<Queue | null>(null);
-  const { queues, loading, error, updateQueueStatus, refetch } = useQueues();
+  const { queues, loading, error, updateQueueStatus, refetch } = useQueuesRealtime();
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -611,9 +595,7 @@ export const Queues = () => {
           </button>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-gray-400 cursor-not-allowed"
-            disabled={true}
-            title="Em Breve"
+            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
           >
             <Plus className="-ml-1 mr-2 h-4 w-4" />
             Criar Fila
@@ -711,14 +693,8 @@ export const Queues = () => {
                                 onClick={async () => {
                                   try {
                                     const newStatus = queue.status === 'Ativo' ? 'Inativo' : 'Ativo';
-                                    const { error } = await supabase
-                                      .from('queues')
-                                      .update({ status: newStatus })
-                                      .eq('id', queue.id);
-
-                                    if (error) throw error;
+                                    await updateQueueStatus(queue.id, newStatus);
                                     toast.success(`Fila ${newStatus.toLowerCase()} com sucesso!`);
-                                    refetch();
                                   } catch (err) {
                                     console.error('Error updating queue status:', err);
                                     toast.error('Erro ao alterar status da fila');
