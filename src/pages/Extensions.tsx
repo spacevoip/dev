@@ -105,6 +105,20 @@ export const Extensions = () => {
     setEditingExtension(null);
   }, [queryClient, user?.accountid]);
 
+  const handleEdit = useCallback((extension: Extension) => {
+    if (!user) {
+      toast.error('Você precisa estar logado para editar ramais');
+      return;
+    }
+
+    if (user.accountid !== extension.accountid && user.role !== 'admin') {
+      toast.error('Você não tem permissão para editar este ramal');
+      return;
+    }
+
+    setEditingExtension(extension);
+  }, [user]);
+
   const handleDelete = useCallback((extension: Extension) => {
     if (!user?.accountid) {
       toast.error('Usuário não identificado');
@@ -184,7 +198,7 @@ export const Extensions = () => {
         ) : (
           <ExtensionList
             extensions={formattedExtensions}
-            onEdit={setEditingExtension}
+            onEdit={handleEdit}
             onDelete={handleDelete}
           />
         )}

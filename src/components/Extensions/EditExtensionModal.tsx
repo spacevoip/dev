@@ -3,13 +3,13 @@ import { X, Phone, Hash, User, AtSign, Lock, Save } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import type { Extension } from '../../types/extension';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface EditExtensionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   extension: Extension;
-  accountId: string;
 }
 
 export const EditExtensionModal: React.FC<EditExtensionModalProps> = ({
@@ -17,8 +17,8 @@ export const EditExtensionModal: React.FC<EditExtensionModalProps> = ({
   onClose,
   onSuccess,
   extension,
-  accountId,
 }) => {
+  const { user } = useAuth();
   const [formData, setFormData] = React.useState({
     nome: extension.nome,
     callerid: extension.callerid || '',
@@ -26,16 +26,28 @@ export const EditExtensionModal: React.FC<EditExtensionModalProps> = ({
   });
   const [loading, setLoading] = React.useState(false);
 
+  // Verifica se o usuário tem permissão para editar o ramal
+  const hasPermission = React.useMemo(() => {
+    if (!user) return false;
+    return user.accountid === extension.accountid || user.role === 'admin';
+  }, [user, extension.accountid]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!hasPermission) {
+      toast.error('Você não tem permissão para editar este ramal');
+      return;
+    }
+
+    if (!user?.accountid) {
+      toast.error('Erro de autenticação');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      if (extension.accountid !== accountId) {
-        toast.error('Você não tem permissão para editar este ramal');
-        return;
-      }
-
       const updateData: Partial<Extension> = {
         nome: formData.nome,
         callerid: formData.callerid,
@@ -48,7 +60,7 @@ export const EditExtensionModal: React.FC<EditExtensionModalProps> = ({
       const { error } = await supabase
         .from('extensions')
         .update(updateData)
-        .match({ id: extension.id, accountid: accountId });
+        .match({ id: extension.id, accountid: user.accountid });
 
       if (error) throw error;
 
@@ -57,11 +69,16 @@ export const EditExtensionModal: React.FC<EditExtensionModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Erro ao atualizar ramal:', error);
-      toast.error('Erro ao atualizar ramal');
+      toast.error('Erro ao atualizar ramal. Tente novamente.');
     } finally {
       setLoading(false);
     }
   };
+
+  // Se não tiver permissão, nem mostra o modal
+  if (!hasPermission) {
+    return null;
+  }
 
   if (!isOpen) return null;
 
@@ -175,8 +192,17 @@ export const EditExtensionModal: React.FC<EditExtensionModalProps> = ({
                   : 'bg-violet-600 hover:bg-violet-700 active:bg-violet-800'
               } transition-colors`}
             >
-              <Save className="h-4 w-4" />
-              {loading ? 'Salvando...' : 'Salvar'}
+              {loading ? (
+                <>
+                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  Salvar
+                </>
+              )}
             </button>
           </div>
         </form>
