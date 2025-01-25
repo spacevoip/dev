@@ -18,11 +18,9 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
   const [userData, setUserData] = useState({
     name: '',
     email: '',
-    contato: '',
-    documento: '',
     password: '',
-    plano: 'Básico',
-    status: 'ativo'
+    plano: 'sip trial',
+    status: 'active',
   });
   const [loading, setLoading] = useState(false);
 
@@ -48,8 +46,6 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
         id: authData.user.id,
         name: userData.name,
         email: userData.email,
-        contato: userData.contato,
-        documento: userData.documento,
         plano: userData.plano,
         status: userData.status,
         accountid: accountId,
@@ -96,98 +92,83 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                 Nome
               </label>
               <input
                 type="text"
-                required
+                name="name"
+                id="name"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
                 value={userData.name}
                 onChange={(e) => setUserData({ ...userData, name: e.target.value })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email
               </label>
               <input
                 type="email"
-                required
+                name="email"
+                id="email"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
                 value={userData.email}
                 onChange={(e) => setUserData({ ...userData, email: e.target.value })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Contato
-              </label>
-              <input
-                type="text"
                 required
-                value={userData.contato}
-                onChange={(e) => setUserData({ ...userData, contato: e.target.value })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Documento
-              </label>
-              <input
-                type="text"
-                required
-                value={userData.documento}
-                onChange={(e) => setUserData({ ...userData, documento: e.target.value })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Senha
               </label>
               <input
                 type="password"
-                required
+                name="password"
+                id="password"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
                 value={userData.password}
                 onChange={(e) => setUserData({ ...userData, password: e.target.value })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label htmlFor="plano" className="block text-sm font-medium text-gray-700">
                 Plano
               </label>
               <select
+                id="plano"
+                name="plano"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
                 value={userData.plano}
                 onChange={(e) => setUserData({ ...userData, plano: e.target.value })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
-                <option value="Básico">Básico</option>
-                <option value="Premium">Premium</option>
-                <option value="Enterprise">Enterprise</option>
+                <option value="sip trial">Sip Trial</option>
+                <option value="sip basico">Sip Básico</option>
+                <option value="sip premium">Sip Premium</option>
+                <option value="sip exclusive">Sip Exclusive</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label htmlFor="status" className="block text-sm font-medium text-gray-700">
                 Status
               </label>
               <select
+                id="status"
+                name="status"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
                 value={userData.status}
                 onChange={(e) => setUserData({ ...userData, status: e.target.value })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
-                <option value="ativo">Ativo</option>
-                <option value="inativo">Inativo</option>
+                <option value="active">Ativo</option>
+                <option value="inactive">Inativo</option>
               </select>
             </div>
           </div>

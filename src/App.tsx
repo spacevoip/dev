@@ -35,6 +35,7 @@ import { CallHistory } from './pages/admin/CallHistory';
 import { AdminExtensions } from './pages/admin/Extensions';
 import { AdminCallerIDBlock } from './pages/admin/CallerIDBlock';
 import { AdminActiveCalls } from './pages/admin/ActiveCalls';
+import { Finance } from './pages/admin/Finance';
 
 // Reseller Pages
 import { ResellerLayout } from './components/Reseller/ResellerLayout';
@@ -76,6 +77,7 @@ function App() {
                 <Route path="calleridblock" element={<AdminCallerIDBlock />} />
                 <Route path="call-history" element={<CallHistory />} />
                 <Route path="active-calls" element={<AdminActiveCalls />} />
+                <Route path="finance" element={<Finance />} />
                 <Route path="settings" element={<AdminSettings />} />
                 <Route path="plans" element={<AdminPlans />} />
               </Route>

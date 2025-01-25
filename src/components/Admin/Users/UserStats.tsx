@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Users, UserCheck, UserX, Clock, AlertTriangle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Users, AlertTriangle, UserCheck, UserX } from 'lucide-react';
 import { AdminUser } from '../../../pages/admin/Users';
 import { supabase } from '../../../lib/supabase';
 
@@ -13,72 +13,57 @@ interface Plan {
   validade: number;
 }
 
-export const UserStats: React.FC<UserStatsProps> = ({ users }) => {
+export const UserStats = ({ users }: UserStatsProps) => {
   const [stats, setStats] = useState({
-    totalUsers: 0,
-    activeUsers: 0,
-    inactiveUsers: 0,
-    newUsers: 0,
-    expiredUsers: 0
+    total: 0,
+    active: 0,
+    inactive: 0,
+    expired: 0
   });
 
   useEffect(() => {
     const calculateStats = async () => {
       try {
-        // Buscar os planos
         const { data: plans, error: plansError } = await supabase
           .from('planos')
           .select('*');
 
         if (plansError) throw plansError;
 
-        // Data atual e data há 30 dias atrás
-        const now = new Date();
-        const thirtyDaysAgo = new Date(now);
-        thirtyDaysAgo.setDate(now.getDate() - 30);
+        // Criar mapa de planos para consulta rápida
+        const plansMap = new Map(plans.map(plan => [plan.nome.toLowerCase(), plan.validade]));
 
-        // Contagens básicas
-        const totalUsers = users.length;
-        const activeUsers = users.filter(user => {
-          const status = user.status?.toLowerCase() || '';
-          return status === 'active' || status === 'ativo';
-        }).length;
-        const inactiveUsers = users.filter(user => {
-          const status = user.status?.toLowerCase() || '';
-          return status === 'inactive' || status === 'inativo' || !status;
-        }).length;
-        
-        // Novos usuários (últimos 30 dias)
-        const newUsers = users.filter(user => {
-          const createdAt = new Date(user.created_at);
-          return createdAt >= thirtyDaysAgo;
-        }).length;
+        const total = users.length;
+        const active = users.filter(user => user.status === 'active').length;
+        const inactive = users.filter(user => user.status === 'inactive').length;
 
-        // Usuários com plano vencido
-        const expiredUsers = users.filter(user => {
-          const status = user.status?.toLowerCase() || '';
-          if (status !== 'active' && status !== 'ativo') return false;
+        // Calcular usuários vencidos usando apenas a data
+        const expired = users.filter(user => {
           if (!user.created_at || !user.plano) return false;
 
-          // Encontrar o plano do usuário
-          const userPlan = plans?.find(p => p.id === user.plano);
-          if (!userPlan?.validade) return false;
+          // Pegar a validade do plano
+          const planoNormalizado = user.plano.toLowerCase().trim();
+          const validity = plansMap.get(planoNormalizado);
+          if (!validity) return false;
 
-          // Calcular data de vencimento
+          const now = new Date();
+          now.setHours(0, 0, 0, 0);
+
           const createdAt = new Date(user.created_at);
-          const validityDays = userPlan.validade;
+          createdAt.setHours(0, 0, 0, 0);
+          
           const expirationDate = new Date(createdAt);
-          expirationDate.setDate(createdAt.getDate() + validityDays);
+          expirationDate.setDate(createdAt.getDate() + validity);
+          expirationDate.setHours(23, 59, 59, 999);
 
           return now > expirationDate;
         }).length;
 
         setStats({
-          totalUsers,
-          activeUsers,
-          inactiveUsers,
-          newUsers,
-          expiredUsers
+          total,
+          active,
+          inactive,
+          expired
         });
 
       } catch (error) {
@@ -89,64 +74,79 @@ export const UserStats: React.FC<UserStatsProps> = ({ users }) => {
     calculateStats();
   }, [users]);
 
-  const StatCard = ({ 
-    icon: Icon, 
-    value, 
-    label, 
-    color,
-    subtext
-  }: { 
-    icon: any; 
-    value: number; 
-    label: string;
-    color: string;
-    subtext?: string;
-  }) => (
-    <div className="flex flex-col bg-white rounded-lg p-4 border border-gray-200">
-      <div className="flex items-center gap-3 mb-2">
-        <div className={`p-2 rounded-lg ${color}`}>
-          <Icon className="h-5 w-5 text-white" />
-        </div>
-        <span className="text-2xl font-semibold">{value}</span>
-      </div>
-      <span className="text-sm text-gray-600">{label}</span>
-      {subtext && <span className="text-xs text-gray-500 mt-1">{subtext}</span>}
-    </div>
-  );
+  const stats_cards = [
+    {
+      title: 'Total de Usuários',
+      value: stats.total,
+      icon: Users,
+      color: 'blue',
+      description: 'Usuários registrados no sistema'
+    },
+    {
+      title: 'Usuários Ativos',
+      value: stats.active,
+      icon: UserCheck,
+      color: 'green',
+      description: 'Usuários com status ativo'
+    },
+    {
+      title: 'Usuários Inativos',
+      value: stats.inactive,
+      icon: UserX,
+      color: 'gray',
+      description: 'Usuários com status inativo'
+    },
+    {
+      title: 'Planos Vencidos',
+      value: stats.expired,
+      icon: AlertTriangle,
+      color: 'red',
+      description: 'Usuários ativos com plano vencido'
+    }
+  ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-      <StatCard
-        icon={Users}
-        value={stats.totalUsers}
-        label="Total de Usuários"
-        color="bg-blue-500"
-      />
-      <StatCard
-        icon={UserCheck}
-        value={stats.activeUsers}
-        label="Usuários Ativos"
-        color="bg-green-500"
-      />
-      <StatCard
-        icon={UserX}
-        value={stats.inactiveUsers}
-        label="Usuários Inativos"
-        color="bg-red-500"
-      />
-      <StatCard
-        icon={Clock}
-        value={stats.newUsers}
-        label="Novos (30 dias)"
-        color="bg-violet-500"
-      />
-      <StatCard
-        icon={AlertTriangle}
-        value={stats.expiredUsers}
-        label="Planos Vencidos"
-        color="bg-orange-500"
-        subtext="Usuários ativos com plano expirado"
-      />
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      {stats_cards.map((card, index) => {
+        const colorClasses = {
+          blue: 'bg-blue-50 text-blue-700 ring-blue-700/10',
+          green: 'bg-green-50 text-green-700 ring-green-600/10',
+          gray: 'bg-gray-50 text-gray-600 ring-gray-500/10',
+          red: 'bg-red-50 text-red-700 ring-red-700/10'
+        };
+
+        const bgGradient = {
+          blue: 'from-blue-400 to-blue-600',
+          green: 'from-green-400 to-green-600',
+          gray: 'from-gray-400 to-gray-600',
+          red: 'from-red-400 to-red-600'
+        };
+
+        return (
+          <div
+            key={card.title}
+            className="relative overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100"
+          >
+            <div className="p-5">
+              <div className="flex items-center gap-4">
+                <div className={`rounded-lg p-2.5 ${colorClasses[card.color]}`}>
+                  <card.icon className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">{card.title}</p>
+                  <p className="mt-1 text-2xl font-semibold text-gray-900">{card.value}</p>
+                </div>
+              </div>
+              <p className="mt-3 text-sm text-gray-500">{card.description}</p>
+            </div>
+            {/* Decorative gradient bar */}
+            <div 
+              className={`absolute bottom-0 left-0 h-1 w-full bg-gradient-to-r ${bgGradient[card.color]}`}
+              aria-hidden="true"
+            />
+          </div>
+        );
+      })}
     </div>
   );
 };

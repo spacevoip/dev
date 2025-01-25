@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import { Header } from './Header';
 import { Menu } from 'lucide-react';
 import { SidebarProvider } from './Sidebar/SidebarContext';
 import { useBackgroundSync } from '../../hooks/useBackgroundSync';
@@ -41,9 +42,11 @@ export const MainLayout: React.FC = () => {
           <Sidebar isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
         </div>
 
-        {/* Main content com padding ajustado para mobile */}
-        <div className="flex-1 overflow-auto">
-          <main className="min-h-screen">
+        {/* Main content com Header e padding ajustado */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header onMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
+          
+          <main className="flex-1 overflow-auto">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <div className="py-4 sm:py-6">
                 <Outlet />

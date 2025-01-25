@@ -140,6 +140,29 @@ export function AdminDashboard() {
       const thirtyDaysAgo = new Date(todayStart);
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29); // -29 para incluir hoje
 
+      // Buscar total de usuários
+      const { count: totalUsers, error: usersCountError } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true });
+
+      if (usersCountError) throw usersCountError;
+
+      // Buscar usuários ativos
+      const { count: activeUsers, error: activeUsersError } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .or('status.eq.ativo,status.eq.active');
+
+      if (activeUsersError) throw activeUsersError;
+
+      // Buscar usuários inativos
+      const { count: inactiveUsers, error: inactiveUsersError } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .or('status.eq.inactive,status.eq.inativo');
+
+      if (inactiveUsersError) throw inactiveUsersError;
+
       // Buscar todos os pagamentos
       const { data: payments, error: paymentsError } = await supabase
         .from('pagamentos')
@@ -154,27 +177,20 @@ export function AdminDashboard() {
         currency: 'BRL'
       }).format(totalRevenue);
 
-      // Buscar usuários e seus status
-      const { data: users, error: usersError } = await supabase
-        .from('users')
-        .select('*');
-
-      if (usersError) throw usersError;
-
-      // Filtrar usuários com datas válidas
-      const validUsers = users?.filter(u => u?.created_at && isValidDate(u.created_at)) || [];
-
-      const activeUsers = validUsers.filter(u => u?.status === 'ativo').length;
-      const inactiveUsers = validUsers.filter(u => u?.status === 'inactive').length;
-
-      // Buscar ramais e seus status
-      const { data: extensions, error: extensionsError } = await supabase
+      // Buscar total de ramais
+      const { count: totalExtensions, error: extensionsCountError } = await supabase
         .from('extensions')
-        .select('*');
+        .select('*', { count: 'exact', head: true });
 
-      if (extensionsError) throw extensionsError;
+      if (extensionsCountError) throw extensionsCountError;
 
-      const activeExtensions = extensions?.filter(e => e?.status === 'registered').length || 0;
+      // Buscar ramais ativos (excluindo os que contêm "Offline" em snystatus)
+      const { count: activeExtensions, error: activeExtensionsError } = await supabase
+        .from('extensions')
+        .select('*', { count: 'exact', head: true })
+        .not('snystatus', 'ilike', '%Offline%');
+
+      if (activeExtensionsError) throw activeExtensionsError;
 
       // Buscar total de CDRs
       const { count: totalCDR, error: cdrError } = await supabase
@@ -184,23 +200,20 @@ export function AdminDashboard() {
       if (cdrError) throw cdrError;
 
       // Calcular planos vencidos
-      const expiredPlans = validUsers.filter(user => {
-        if (!user?.created_at || !user?.plano || user?.status !== 'ativo') return false;
-        const createdAt = new Date(user.created_at);
-        const validityDays = 30; // Ajuste conforme necessário
-        const expirationDate = new Date(createdAt);
-        expirationDate.setDate(createdAt.getDate() + validityDays);
-        return now > expirationDate;
-      }).length;
+      const expiredPlans = await supabase
+        .from('users')
+        .select('created_at', { count: 'exact' })
+        .eq('status', 'ativo')
+        .lt('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
 
       setMetrics({
-        totalUsers: validUsers.length,
+        totalUsers,
         activeUsers,
         inactiveUsers,
-        totalExtensions: extensions?.length || 0,
-        activeExtensions,
-        totalCDR: totalCDR || 0,
-        expiredPlans,
+        totalExtensions: totalExtensions || 0,
+        activeExtensions: activeExtensions || 0,
+        totalCDR,
+        expiredPlans: expiredPlans.count || 0,
         revenue: formattedRevenue
       });
 
@@ -216,7 +229,11 @@ export function AdminDashboard() {
       }
 
       // Preencher dados de usuários
-      validUsers.forEach(user => {
+      const { data: users } = await supabase
+        .from('users')
+        .select('created_at');
+
+      users.forEach(user => {
         if (user?.created_at) {
           const localDate = new Date(user.created_at);
           const dateStr = localDate.toISOString().split('T')[0];

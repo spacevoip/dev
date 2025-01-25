@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import bcrypt from 'bcryptjs';
+import { getClientIP } from '../services/ipService';
 
 export interface User {
   id: string;
@@ -13,6 +14,7 @@ export interface User {
   plano: string;
   contato: string;
   documento: string;
+  ipsecurity: string | null;
 }
 
 export interface UserWithPassword extends User {
@@ -66,6 +68,20 @@ export async function generateUniqueAccountId(): Promise<string> {
   return accountId;
 }
 
+// Função para verificar se o IP já está em uso
+async function isIPInUse(ip: string): Promise<boolean> {
+  if (!ip) return false;
+
+  const { data } = await supabase
+    .from('users')
+    .select('id')
+    .eq('ipsecurity', ip)
+    .not('status', 'eq', 'inativo') // Não considera contas inativas
+    .single();
+  
+  return !!data; // retorna true se encontrar algum usuário com este IP
+}
+
 export const register = async (data: RegisterData): Promise<{ user: User | null; error: string | null }> => {
   try {
     // Validações
@@ -86,6 +102,23 @@ export const register = async (data: RegisterData): Promise<{ user: User | null;
 
     if (existingUser) {
       return { user: null, error: 'Email já cadastrado' };
+    }
+
+    // Obtém o IP do cliente
+    const clientIP = await getClientIP();
+
+    // Se não conseguiu obter o IP, retorna erro
+    if (!clientIP) {
+      return { user: null, error: 'Não foi possível verificar seu endereço IP. Por favor, tente novamente.' };
+    }
+
+    // Verifica se o IP já está em uso
+    const ipInUse = await isIPInUse(clientIP);
+    if (ipInUse) {
+      return { 
+        user: null, 
+        error: `IP_ERROR:${clientIP}` // Marca especial para identificar erro de IP
+      };
     }
 
     // Gera um accountId único
@@ -110,6 +143,7 @@ export const register = async (data: RegisterData): Promise<{ user: User | null;
           created_at: new Date().toISOString(),
           last_login: null,
           accountid: accountId,
+          ipsecurity: clientIP,
         },
       ])
       .select()

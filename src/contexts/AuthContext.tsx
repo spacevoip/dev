@@ -2,12 +2,14 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
+import bcrypt from 'bcryptjs';
 
 interface AuthContextType {
   user: User | null;
   setUser: (user: User | null) => void;
   loading: boolean;
   signOut: () => Promise<void>;
+  updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -128,13 +130,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [user]);
 
+  const updatePassword = async (currentPassword: string, newPassword: string) => {
+    try {
+      if (!user) {
+        throw new Error('Usuário não autenticado');
+      }
+
+      // Verifica a senha atual
+      const { data: userData } = await supabase
+        .from('users')
+        .select('password')
+        .eq('id', user.id)
+        .single();
+
+      if (!userData) {
+        throw new Error('Usuário não encontrado');
+      }
+
+      // Verifica se a senha atual está correta
+      const isCurrentPasswordValid = await bcrypt.compare(currentPassword, userData.password);
+      if (!isCurrentPasswordValid) {
+        throw new Error('Senha atual incorreta');
+      }
+
+      // Gera hash da nova senha
+      const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+      // Atualiza a senha no banco
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ password: hashedNewPassword })
+        .eq('id', user.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar senha:', error);
+      throw error;
+    }
+  };
+
   const value = {
     user,
     setUser: (newUser: User | null) => {
       setUser(newUser);
       if (newUser) {
         localStorage.setItem('user', JSON.stringify(newUser));
-        // Define expiração do token para 24 horas
         const expiry = new Date(new Date().getTime() + 24 * 60 * 60 * 1000);
         localStorage.setItem('tokenExpiry', expiry.toISOString());
       } else {
@@ -143,7 +185,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     },
     loading,
-    signOut
+    signOut,
+    updatePassword
   };
 
   return (

@@ -24,8 +24,6 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
   const [editedUser, setEditedUser] = useState<Partial<AdminUser>>({
     name: user.name,
     email: user.email,
-    contato: user.contato,
-    documento: user.documento,
     plano: user.plano,
     status: user.status
   });
@@ -125,6 +123,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
   );
 
   const SelectField = ({
+
     label,
     value,
     onChange,
@@ -208,47 +207,31 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-6">
             {activeTab === 'personal' ? (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <InputField
-                    icon={User}
-                    label="Nome Completo"
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Nome
+                  </label>
+                  <input
                     type="text"
-                    value={editedUser.name || ''}
-                    onChange={(value) => setEditedUser(prev => ({ ...prev, name: value }))}
-                    required
-                    placeholder="Digite o nome completo"
+                    value={editedUser.name}
+                    onChange={(e) => setEditedUser(prev => ({ ...prev, name: e.target.value }))}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
                   />
-                  <InputField
-                    icon={Mail}
-                    label="Email"
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Email
+                  </label>
+                  <input
                     type="email"
-                    value={editedUser.email || ''}
-                    onChange={(value) => setEditedUser(prev => ({ ...prev, email: value }))}
-                    required
-                    placeholder="Digite o email"
+                    value={editedUser.email}
+                    onChange={(e) => setEditedUser(prev => ({ ...prev, email: e.target.value }))}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
                   />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <InputField
-                    icon={Phone}
-                    label="Telefone"
-                    type="tel"
-                    value={editedUser.contato || ''}
-                    onChange={(value) => setEditedUser(prev => ({ ...prev, contato: value }))}
-                    required
-                    placeholder="Digite o telefone"
-                  />
-                  <InputField
-                    icon={FileText}
-                    label="CPF/CNPJ"
-                    type="text"
-                    value={editedUser.documento || ''}
-                    onChange={(value) => setEditedUser(prev => ({ ...prev, documento: value }))}
-                    placeholder="Digite o CPF ou CNPJ"
-                  />
-                </div>
-              </>
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <SelectField

@@ -4,10 +4,13 @@ import { useAuth } from '../contexts/AuthContext';
 
 export interface CurrentUser {
   id: string;
-  accountid: string;
   name: string;
   email: string;
+  accountid: string;
   plano: string;
+  valido: boolean;
+  status: string;
+  created_at: string;
 }
 
 export const useCurrentUser = () => {
@@ -26,7 +29,7 @@ export const useCurrentUser = () => {
       try {
         const { data, error } = await supabase
           .from('users')
-          .select('id, accountid, name, email, plano')
+          .select('id, accountid, name, email, plano, valido, status, created_at')
           .eq('id', user.id)
           .single();
 

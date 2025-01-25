@@ -1,7 +1,17 @@
 import React from 'react';
 import { Outlet, Navigate, Link, useLocation } from 'react-router-dom';
 import { useUserData } from '../../hooks/useUserData';
-import { Users, LayoutDashboard, Settings, LogOut, Phone, PhoneCall, Ban, PhoneOutgoing } from 'lucide-react';
+import { 
+  Users, 
+  LayoutDashboard, 
+  Settings, 
+  LogOut, 
+  Phone, 
+  PhoneCall, 
+  Ban, 
+  PhoneOutgoing,
+  DollarSign 
+} from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export function AdminLayout() {
@@ -12,6 +22,7 @@ export function AdminLayout() {
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/admin/dashboard' },
     { icon: Users, label: 'Usuários', path: '/admin/users' },
+    { icon: DollarSign, label: 'Financeiro', path: '/admin/finance' },
     { icon: Phone, label: 'Extensions', path: '/admin/extensions' },
     { icon: PhoneCall, label: 'Call History', path: '/admin/call-history' },
     { icon: PhoneOutgoing, label: 'Chamadas Ativas', path: '/admin/active-calls' },

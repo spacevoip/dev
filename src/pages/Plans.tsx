@@ -125,8 +125,12 @@ export default function Plans() {
 
             {currentUser?.plano === plan.name && (
               <div className="absolute -top-3 right-4">
-                <span className="bg-green-500 text-white text-xs font-medium px-3 py-1 rounded-full shadow-md">
-                  Plano Atual
+                <span className={`text-xs font-medium px-3 py-1 rounded-full shadow-md ${
+                  currentUser.valido === true
+                    ? 'bg-green-500 text-white'
+                    : 'bg-red-500 text-white'
+                }`}>
+                  {currentUser.valido === true ? 'Plano Atual' : 'Plano Vencido'}
                 </span>
               </div>
             )}
@@ -161,17 +165,26 @@ export default function Plans() {
 
               <button
                 className={`w-full py-3 px-4 rounded-xl font-medium text-sm transition-all duration-200 ${
-                  currentUser?.plano === plan.name || (plan.id === 'trial' && currentUser?.plano && currentUser.plano !== 'Sip Trial')
+                  currentUser?.plano === plan.name && currentUser.valido === true
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : currentUser?.plano === plan.name && currentUser.valido === false
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : plan.id === 'trial' && currentUser?.plano && currentUser.plano !== 'Sip Trial'
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                     : plan.isPopular
                     ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md hover:shadow-blue-100'
                     : 'bg-gray-900 text-white hover:bg-gray-800'
                 }`}
-                disabled={currentUser?.plano === plan.name || (plan.id === 'trial' && currentUser?.plano && currentUser.plano !== 'Sip Trial')}
+                disabled={
+                  (currentUser?.plano === plan.name && currentUser.valido === true) || 
+                  (plan.id === 'trial' && currentUser?.plano && currentUser.plano !== 'Sip Trial')
+                }
                 onClick={() => handleSelectPlan(plan)}
               >
-                {currentUser?.plano === plan.name 
-                  ? 'Plano Atual' 
+                {currentUser?.plano === plan.name && currentUser.valido === true
+                  ? 'Plano Atual'
+                  : currentUser?.plano === plan.name && currentUser.valido === false
+                  ? 'Renovar Plano'
                   : plan.id === 'trial' && currentUser?.plano && currentUser.plano !== 'Sip Trial'
                   ? 'Não Disponível'
                   : 'Fazer Upgrade'

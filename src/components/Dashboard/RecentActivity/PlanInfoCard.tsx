@@ -1,26 +1,50 @@
 import React, { useState } from 'react';
 import { CreditCard, Users, Calendar, CheckCircle2 } from 'lucide-react';
-import { UserProfileProps } from '../../types/settings';
-import { useExtensionsCount } from '../../hooks/useExtensionsCount';
-import PurchasePlanModal from '../Plans/PurchasePlanModal';
-import { useCurrentUser } from '../../hooks/useCurrentUser';
-import { Plan } from '../../types/Plan';
-import { calculateExpirationStatus } from '../../utils/dateUtils';
+import { UserProfileProps } from '../../../types/settings';
+import { useExtensionsCount } from '../../../hooks/useExtensionsCount';
+import PurchasePlanModal from '../../Plans/PurchasePlanModal';
+import { useCurrentUser } from '../../../hooks/useCurrentUser';
+import { Plan } from '../../../types/Plan';
+import { calculateExpirationStatus } from '../../../utils/dateUtils';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useUserDataQuery } from '../../../hooks/queries/useUserDataQuery';
+import { usePlanQuery } from '../../../hooks/queries/usePlanQuery';
+import { useNavigate } from 'react-router-dom';
 
-export function PlanCard({ userData, planData }: UserProfileProps) {
+export const PlanInfoCard = () => {
   const { currentCount } = useExtensionsCount();
   const { currentUser } = useCurrentUser();
+  const navigate = useNavigate();
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const { user } = useAuth();
+  const { data: userData, isLoading: isLoadingUser } = useUserDataQuery(user?.accountid);
+  const { data: planData, isLoading: isLoadingPlan } = usePlanQuery(userData?.plano);
+
+  if (isLoadingUser || isLoadingPlan) {
+    return (
+      <div className="animate-pulse">
+        <div className="h-32 bg-gray-200 rounded-lg"></div>
+      </div>
+    );
+  }
+
+  if (!userData || !planData) {
+    return (
+      <div className="text-center text-gray-500 py-4">
+        Não foi possível carregar as informações do plano.
+      </div>
+    );
+  }
 
   // Usar a função calculateExpirationStatus para verificar vencimento
-  const expirationInfo = userData.created_at && planData?.validade 
+  const expirationInfo = userData.created_at && planData.validade 
     ? calculateExpirationStatus(userData.created_at, planData.validade)
     : null;
 
   const extensionsUsage = planData ? (currentCount / planData.limite) * 100 : 0;
 
   const handlePlanAction = () => {
-    setShowPurchaseModal(true);
+    navigate('/plans');
   };
 
   const handlePaymentSuccess = () => {
@@ -158,4 +182,4 @@ export function PlanCard({ userData, planData }: UserProfileProps) {
       )}
     </div>
   );
-}
+};

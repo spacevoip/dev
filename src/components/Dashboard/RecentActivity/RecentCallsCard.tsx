@@ -25,7 +25,7 @@ export const RecentCallsCard: React.FC = () => {
     additionalFilters: (query) => {
       return query
         .order('start', { ascending: false })
-        .limit(4);
+        .limit(3);
     },
   });
 
@@ -70,7 +70,7 @@ export const RecentCallsCard: React.FC = () => {
           <h2 className="text-lg font-semibold">Chamadas Recentes</h2>
         </div>
         <div className="animate-pulse space-y-3">
-          {[...Array(4)].map((_, i) => (
+          {[...Array(3)].map((_, i) => (
             <div key={`skeleton-${i}`} className="h-16 bg-gray-100 rounded"></div>
           ))}
         </div>

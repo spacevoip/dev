@@ -11,7 +11,8 @@ import {
   Settings,
   LogOut,
   Shield,
-  RefreshCw
+  RefreshCw,
+  DollarSign
 } from 'lucide-react';
 import { useUserData } from '../hooks/useUserData';
 import { useAuth } from '../contexts/AuthContext';
@@ -36,7 +37,12 @@ export function Sidebar() {
 
   // Adiciona o botão de admin no menu se o usuário for admin
   if (userData?.role === 'admin') {
-    menuItems.push({ icon: Shield, label: 'Admin Panel', path: '/admin' });
+    menuItems.push(
+      { icon: Users, label: 'Usuários', path: '/admin/users' },
+      { icon: DollarSign, label: 'Financeiro', path: '/admin/finance' },
+      { icon: Settings, label: 'Configurações', path: '/admin/settings' },
+      { icon: Shield, label: 'Admin Panel', path: '/admin' }
+    );
   }
 
   return (

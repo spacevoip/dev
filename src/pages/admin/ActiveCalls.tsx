@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Badge } from "../../components/ui/badge";
 import { Phone, Clock } from "lucide-react";
+import { supabase } from "../../lib/supabase";
 
 interface ActiveCall {
   Accountcode: string;
@@ -9,12 +10,41 @@ interface ActiveCall {
   Duration: string;
   Extension: string;
   State: string;
+  username?: string; // Campo opcional para o nome do cliente
 }
 
 export function AdminActiveCalls() {
   const [activeCalls, setActiveCalls] = useState<ActiveCall[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchUsernames = async (calls: ActiveCall[]) => {
+    // Extrair ramais do Channel
+    const ramais = calls.map(call => getRamal(call.Channel)).filter(ramal => ramal !== 'N/A');
+    
+    if (ramais.length === 0) return calls;
+
+    const { data: extensionsData, error } = await supabase
+      .from('extensions')
+      .select('numero, username')
+      .in('numero', ramais);
+
+    if (error) {
+      console.error('Erro ao buscar usernames:', error);
+      return calls;
+    }
+
+    // Criar um mapa de ramal -> username para busca rápida
+    const usernameMap = new Map(
+      extensionsData.map(ext => [ext.numero, ext.username])
+    );
+
+    // Adicionar username para cada chamada usando o ramal extraído do Channel
+    return calls.map(call => ({
+      ...call,
+      username: usernameMap.get(getRamal(call.Channel)) || 'N/A'
+    }));
+  };
 
   const fetchActiveCalls = async () => {
     try {
@@ -34,7 +64,9 @@ export function AdminActiveCalls() {
       }
 
       const data = await response.json();
-      setActiveCalls(data);
+      // Buscar os usernames e atualizar as chamadas
+      const callsWithUsernames = await fetchUsernames(data);
+      setActiveCalls(callsWithUsernames);
       setError(null);
     } catch (error) {
       console.error('Erro ao buscar chamadas ativas:', error);
@@ -108,6 +140,9 @@ export function AdminActiveCalls() {
                   Ramal
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Cliente
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Destino
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -126,6 +161,9 @@ export function AdminActiveCalls() {
                 <tr key={index}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {getRamal(call.Channel)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {call.username}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {call.Extension}
