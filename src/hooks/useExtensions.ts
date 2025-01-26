@@ -8,6 +8,8 @@ export interface Extension {
   name: string;
   status: string;
   callerid: string;
+  snystatus?: string;
+  numero: string;
 }
 
 export const useExtensions = () => {
@@ -25,10 +27,21 @@ export const useExtensions = () => {
         const { data, error } = await supabase
           .from('extensions')
           .select('*')
-          .eq('accountid', accountId);
+          .eq('accountid', accountId)
+          .order('numero');
 
         if (error) throw error;
-        return data || [];
+
+        // Transforma os dados para o formato esperado
+        return (data || []).map(ext => ({
+          id: ext.id || '',
+          extension: ext.numero || '',
+          name: ext.nome || '',
+          status: ext.snystatus || 'offline',
+          callerid: ext.callerid || '',
+          snystatus: ext.snystatus,
+          numero: ext.numero
+        }));
       } catch (error) {
         console.error('Erro ao buscar ramais:', error);
         return [];
