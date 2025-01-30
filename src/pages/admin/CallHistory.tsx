@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Phone, Search, Download, Calendar } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Call {
   id: string;
@@ -22,20 +23,24 @@ export function CallHistory() {
   const [endDate, setEndDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 17;
+  const { user } = useAuth();
 
   useEffect(() => {
-    fetchCalls();
-  }, []);
+    if (user?.accountid) {
+      fetchCalls();
+    }
+  }, [user]);
 
   async function fetchCalls() {
     try {
       setLoading(true);
       console.log('Iniciando busca de chamadas...');
 
-      // Busca direta na tabela cdr
+      // Busca direta na tabela cdr com filtro de accountid
       const { data, error } = await supabase
         .from('cdr')
         .select('*')
+        .eq('accountid', user?.accountid)
         .order('start', { ascending: false });
 
       console.log('Resultado da busca:', { data, error });
@@ -84,6 +89,7 @@ export function CallHistory() {
       const { data, error } = await supabase
         .from('cdr')
         .select('*')
+        .eq('accountid', user?.accountid)
         .order('start', { ascending: false });
       
       if (error) throw error;

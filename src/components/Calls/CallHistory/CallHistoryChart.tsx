@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -14,6 +14,7 @@ import { Line } from 'react-chartjs-2';
 import { Phone, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { formatDuration } from '../../../utils/formatters';
 import { useCallHistory } from '../../../hooks/useCallHistory';
+import { useCallStats } from '../../../hooks/useCallStats';
 
 // Registrar os componentes necessários do Chart.js
 ChartJS.register(
@@ -29,7 +30,7 @@ ChartJS.register(
 
 export const CallHistoryChart: React.FC = () => {
   const {
-    data: calls,
+    data,
     loading
   } = useCallHistory({
     currentPage: 1,
@@ -37,69 +38,19 @@ export const CallHistoryChart: React.FC = () => {
     sortBy: { column: 'start', direction: 'desc' }
   });
 
-  // Valores calculados uma vez e memorizados
-  const stats = useMemo(() => {
-    if (!calls || !Array.isArray(calls)) {
-      return {
-        totalCalls: 0,
-        avgDuration: 0,
-        successRate: 0,
-        totalDuration: 0
-      };
-    }
+  const stats = useCallStats(data?.data || []);
 
-    const totalCalls = calls.length;
-    const totalDuration = calls.reduce((acc, call) => acc + (call.billsec || 0), 0);
-    const avgDuration = totalCalls ? Math.round(totalDuration / totalCalls) : 0;
-    const successfulCalls = calls.filter(call => call.disposition?.toLowerCase() === 'answered').length;
-    const successRate = totalCalls ? (successfulCalls / totalCalls) * 100 : 0;
-
-    return {
-      totalCalls,
-      avgDuration,
-      successRate,
-      totalDuration
-    };
-  }, [calls]);
-
-  const chartData = useMemo(() => {
-    if (!calls || !Array.isArray(calls)) {
-      return {
-        labels: [],
-        datasets: [{
-          label: 'Chamadas por Hora',
-          data: [],
-          fill: true,
-          borderColor: 'rgb(124, 58, 237)',
-          backgroundColor: 'rgba(124, 58, 237, 0.1)',
-          tension: 0.4,
-        }]
-      };
-    }
-
-    // Agrupa chamadas por hora
-    const hourlyData = calls.reduce((acc, call) => {
-      const hour = new Date(call.start).getHours();
-      acc[hour] = (acc[hour] || 0) + 1;
-      return acc;
-    }, {} as Record<number, number>);
-
-    // Cria array com 24 horas
-    const hours = Array.from({ length: 24 }, (_, i) => i);
-    const data = hours.map(hour => hourlyData[hour] || 0);
-    
-    return {
-      labels: hours.map(hour => `${String(hour).padStart(2, '0')}:00`),
-      datasets: [{
-        label: 'Chamadas por Hora',
-        data,
-        fill: true,
-        borderColor: 'rgb(124, 58, 237)',
-        backgroundColor: 'rgba(124, 58, 237, 0.1)',
-        tension: 0.4,
-      }]
-    };
-  }, [calls]);
+  const chartData = {
+    labels: stats.hourlyStats.labels,
+    datasets: [{
+      label: 'Chamadas por Hora',
+      data: stats.hourlyStats.data,
+      fill: true,
+      borderColor: 'rgb(124, 58, 237)',
+      backgroundColor: 'rgba(124, 58, 237, 0.1)',
+      tension: 0.4,
+    }]
+  };
 
   const options = {
     responsive: true,
@@ -143,7 +94,7 @@ export const CallHistoryChart: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-gray-600">Total de Chamadas</p>
-              <p className="text-lg font-semibold text-violet-600">{stats.totalCalls}</p>
+              <p className="text-lg font-semibold text-violet-600">{stats.todayStats.total}</p>
             </div>
           </div>
         </div>
@@ -155,7 +106,7 @@ export const CallHistoryChart: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-gray-600">Duração Média</p>
-              <p className="text-lg font-semibold text-indigo-600">{formatDuration(stats.avgDuration)}</p>
+              <p className="text-lg font-semibold text-indigo-600">{formatDuration(stats.averageMinutes * 60)}</p>
             </div>
           </div>
         </div>
@@ -179,7 +130,7 @@ export const CallHistoryChart: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-gray-600">Duração Total</p>
-              <p className="text-lg font-semibold text-purple-600">{formatDuration(stats.totalDuration)}</p>
+              <p className="text-lg font-semibold text-purple-600">{formatDuration(stats.todayStats.totalMinutes * 60)}</p>
             </div>
           </div>
         </div>

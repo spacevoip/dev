@@ -1,13 +1,16 @@
 import React from 'react';
+import { format } from 'date-fns';
 import { Phone, PhoneIncoming, PhoneOutgoing, Download } from 'lucide-react';
 import { formatDateTime } from '../../../utils/formatters';
 import type { CallHistory } from '../../../types';
 
 interface CallHistoryItemProps {
   call: CallHistory;
+  selected?: boolean;
+  onSelect?: () => void;
 }
 
-export const CallHistoryItem: React.FC<CallHistoryItemProps> = ({ call }) => {
+export const CallHistoryItem: React.FC<CallHistoryItemProps> = ({ call, selected, onSelect }) => {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'atendida':
@@ -33,7 +36,15 @@ export const CallHistoryItem: React.FC<CallHistoryItemProps> = ({ call }) => {
   };
 
   return (
-    <tr className="hover:bg-gray-50/50 transition-colors">
+    <tr className={`hover:bg-gray-50/50 transition-colors ${selected ? 'bg-violet-50/50' : ''}`}>
+      <td className="px-4 py-3 whitespace-nowrap">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onSelect}
+          className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+        />
+      </td>
       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
         {formatDateTime(call.timestamp)}
       </td>

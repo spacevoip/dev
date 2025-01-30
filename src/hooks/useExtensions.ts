@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 export interface Extension {
   id: string;
   extension: string;
-  name: string;
+  nome: string;
   status: string;
   callerid: string;
   snystatus?: string;
@@ -36,7 +36,7 @@ export const useExtensions = () => {
         return (data || []).map(ext => ({
           id: ext.id || '',
           extension: ext.numero || '',
-          name: ext.nome || '',
+          nome: ext.nome || '',
           status: ext.snystatus || 'offline',
           callerid: ext.callerid || '',
           snystatus: ext.snystatus,

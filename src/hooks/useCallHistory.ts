@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import type { CDRRecord } from '../types';
 
 interface UseCallHistoryProps {
   currentPage: number;
@@ -10,10 +9,9 @@ interface UseCallHistoryProps {
   filters?: {
     startDate?: Date;
     endDate?: Date;
-    status?: string;
-    type?: 'inbound' | 'outbound' | 'all';
     minDuration?: number;
     maxDuration?: number;
+    status?: string;
   };
   sortBy?: {
     column: string;
@@ -31,65 +29,64 @@ export function useCallHistory({
   const { user } = useAuth();
   const accountId = user?.accountid;
 
-  const query = useQuery({
+  return useQuery({
     queryKey: ['callHistory', accountId, currentPage, itemsPerPage, searchQuery, filters, sortBy],
     queryFn: async () => {
       if (!accountId) {
-        return [];
+        return { data: [], count: 0 };
       }
 
       let query = supabase
         .from('cdr')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('accountid', accountId)
         .order(sortBy.column, { ascending: sortBy.direction === 'asc' })
         .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1);
 
-      // Aplicar filtros
+      // Aplicar filtros de data
       if (filters.startDate) {
         query = query.gte('start', filters.startDate.toISOString());
       }
       if (filters.endDate) {
         query = query.lte('start', filters.endDate.toISOString());
       }
-      if (filters.status) {
-        query = query.eq('disposition', filters.status);
-      }
-      if (filters.type && filters.type !== 'all') {
-        query = query.eq('type', filters.type);
-      }
+
+      // Aplicar filtros de duração
       if (filters.minDuration) {
         query = query.gte('billsec', filters.minDuration);
       }
       if (filters.maxDuration) {
         query = query.lte('billsec', filters.maxDuration);
       }
-      if (searchQuery) {
-        query = query.or(`
-          src.ilike.%${searchQuery}%,
-          dst.ilike.%${searchQuery}%,
-          disposition.ilike.%${searchQuery}%
-        `);
+
+      // Aplicar filtro de status
+      if (filters.status) {
+        query = query.eq('disposition', filters.status);
       }
 
-      const { data, error } = await query;
+      // Aplicar busca
+      if (searchQuery) {
+        query = query.or(`channel.ilike.%${searchQuery}%,dst.ilike.%${searchQuery}%,disposition.ilike.%${searchQuery}%`);
+      }
+
+      const { data, error, count } = await query;
 
       if (error) {
         console.error('Erro ao buscar histórico de chamadas:', error);
-        return [];
+        console.log('Query params:', {
+          accountId,
+          currentPage,
+          itemsPerPage,
+          searchQuery,
+          filters,
+          sortBy
+        });
+        return { data: [], count: 0 };
       }
 
-      return data || [];
+      return { data: data || [], count: count || 0 };
     },
     enabled: !!accountId,
     staleTime: 30000, // 30 segundos
   });
-
-  return {
-    data: query.data,
-    loading: query.isLoading,
-    error: query.error ? (query.error as Error).message : null,
-    refetch: query.refetch,
-    isRefetching: query.isRefetching
-  };
 }

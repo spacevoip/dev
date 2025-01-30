@@ -15,21 +15,17 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    const savedUser = localStorage.getItem('user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
   const [loading, setLoading] = useState(true);
 
-  // Função para fazer logout
   const signOut = async () => {
     try {
-      // Desconecta o usuário
       await supabase.auth.signOut();
-      
-      // Remove dados do usuário
       setUser(null);
       localStorage.removeItem('user');
-      localStorage.removeItem('tokenExpiry');
-
-      // Redireciona para login
       window.location.href = '/login';
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
@@ -37,16 +33,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Função para verificar o status do usuário
   const checkUserStatus = async () => {
     try {
       if (!user) return;
 
-      const { data: userData } = await supabase
+      const { data: userData, error } = await supabase
         .from('users')
         .select('status')
         .eq('id', user.id)
         .single();
+
+      if (error) throw error;
 
       if (!userData || (userData.status !== 'ativo' && userData.status !== 'active')) {
         toast.error('Sua conta foi desativada. Entre em contato com o Suporte Via Chat.', {
@@ -56,141 +53,96 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Erro ao verificar status do usuário:', error);
+      await signOut();
+    }
+  };
+
+  const checkAndRefreshSession = async () => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) throw error;
+
+      if (session?.user?.email) {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', session.user.email)
+          .single();
+
+        if (userError) throw userError;
+
+        if (userData && (userData.status === 'ativo' || userData.status === 'active')) {
+          setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
+        } else {
+          await signOut();
+        }
+      } else if (user) {
+        // Se não tem sessão mas tem user no state, verifica o status
+        await checkUserStatus();
+      }
+    } catch (error) {
+      console.error('Erro ao verificar sessão:', error);
+      await signOut();
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    // Carrega o usuário do localStorage e verifica a validade da sessão
-    const loadUser = async () => {
-      try {
-        const savedUser = localStorage.getItem('user');
-        if (savedUser) {
-          const parsedUser = JSON.parse(savedUser);
-          
-          // Verifica se o usuário está ativo e atualiza seus dados
-          const { data: userData } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', parsedUser.id)
-            .single();
+    checkAndRefreshSession();
 
-          if (!userData || (userData.status !== 'ativo' && userData.status !== 'active')) {
-            // Se o usuário não estiver ativo, faz logout
-            toast.error('Sua conta foi desativada. Entre em contato com o Suporte Via Chat.', {
-              duration: 5000,
-            });
-            await signOut();
-          } else {
-            setUser(userData);
-          }
-        }
-      } catch (error) {
-        console.error('Erro ao carregar usuário:', error);
-      } finally {
-        setLoading(false);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+        localStorage.removeItem('user');
+      } else if (event === 'SIGNED_IN' && session?.user?.email) {
+        checkAndRefreshSession();
       }
-    };
+    });
 
-    loadUser();
-  }, []);
-
-  // Efeito para verificar o status do usuário periodicamente
-  useEffect(() => {
-    if (!user) return;
-
-    // Verifica o status a cada 30 segundos
-    const interval = setInterval(checkUserStatus, 30000);
-
-    // Inscreve-se em mudanças na tabela de usuários
-    const userStatusSubscription = supabase
-      .channel('user-status-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'users',
-          filter: `id=eq.${user.id}`,
-        },
-        async (payload) => {
-          const newStatus = payload.new.status;
-          if (newStatus !== 'ativo' && newStatus !== 'active') {
-            toast.error('Sua conta foi desativada. Entre em contato com o Suporte Via Chat.', {
-              duration: 5000,
-            });
-            await signOut();
-          }
-        }
-      )
-      .subscribe();
+    // Verifica o status do usuário periodicamente
+    const statusInterval = setInterval(checkUserStatus, 60000); // A cada minuto
 
     return () => {
-      clearInterval(interval);
-      userStatusSubscription.unsubscribe();
+      subscription.unsubscribe();
+      clearInterval(statusInterval);
     };
-  }, [user]);
+  }, []);
 
   const updatePassword = async (currentPassword: string, newPassword: string) => {
     try {
-      if (!user) {
-        throw new Error('Usuário não autenticado');
-      }
+      if (!user) throw new Error('Usuário não autenticado');
 
       // Verifica a senha atual
-      const { data: userData } = await supabase
-        .from('users')
-        .select('password')
-        .eq('id', user.id)
-        .single();
-
-      if (!userData) {
-        throw new Error('Usuário não encontrado');
-      }
-
-      // Verifica se a senha atual está correta
-      const isCurrentPasswordValid = await bcrypt.compare(currentPassword, userData.password);
-      if (!isCurrentPasswordValid) {
+      const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isPasswordValid) {
         throw new Error('Senha atual incorreta');
       }
 
-      // Gera hash da nova senha
-      const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+      // Gera o hash da nova senha
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(newPassword, salt);
 
       // Atualiza a senha no banco
-      const { error: updateError } = await supabase
+      const { error } = await supabase
         .from('users')
-        .update({ password: hashedNewPassword })
+        .update({ password: hashedPassword })
         .eq('id', user.id);
 
-      if (updateError) {
-        throw updateError;
-      }
+      if (error) throw error;
+
+      toast.success('Senha atualizada com sucesso!');
     } catch (error) {
       console.error('Erro ao atualizar senha:', error);
+      toast.error(error instanceof Error ? error.message : 'Erro ao atualizar senha');
       throw error;
     }
   };
 
-  const value = {
-    user,
-    setUser: (newUser: User | null) => {
-      setUser(newUser);
-      if (newUser) {
-        localStorage.setItem('user', JSON.stringify(newUser));
-        const expiry = new Date(new Date().getTime() + 24 * 60 * 60 * 1000);
-        localStorage.setItem('tokenExpiry', expiry.toISOString());
-      } else {
-        localStorage.removeItem('user');
-        localStorage.removeItem('tokenExpiry');
-      }
-    },
-    loading,
-    signOut,
-    updatePassword
-  };
-
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ user, setUser, loading, signOut, updatePassword }}>
       {children}
     </AuthContext.Provider>
   );

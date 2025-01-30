@@ -27,10 +27,10 @@ const ActiveCallsTable: React.FC<ActiveCallsTableProps> = ({ calls }) => {
 
   // Filtra os ramais com base na busca
   const filteredExtensions = extensions.filter(ext => {
-    if (!ext || !ext.extension || !ext.name) return false;
+    if (!ext || !ext.extension || !ext.nome) return false;
     const query = searchQuery.toLowerCase();
     return ext.extension.toLowerCase().includes(query) ||
-           ext.name.toLowerCase().includes(query);
+           ext.nome.toLowerCase().includes(query);
   });
 
   const handleHangupClick = (channel: string) => {
@@ -356,7 +356,7 @@ const ActiveCallsTable: React.FC<ActiveCallsTableProps> = ({ calls }) => {
                 <div className="mb-4 rounded-lg bg-violet-50 p-4">
                   <p className="font-medium text-violet-900">Ramal selecionado:</p>
                   <p className="text-violet-700">
-                    {selectedDestination.extension} - {selectedDestination.name}
+                    {selectedDestination.extension} - {selectedDestination.nome}
                   </p>
                 </div>
               </div>
@@ -403,12 +403,14 @@ const ActiveCallsTable: React.FC<ActiveCallsTableProps> = ({ calls }) => {
                                 Ramal {ext.extension}
                               </span>
                               <span className="text-sm text-gray-500">
-                                {ext.name} ({ext.callerid})
+                                {ext.nome} ({ext.callerid})
                               </span>
                             </div>
-                            <div className={`h-2 w-2 rounded-full ${
-                              ext.snystatus === 'online' ? 'bg-green-500' : 'bg-gray-300'
-                            }`} />
+                            <div className={`h-2.5 w-2.5 rounded-full ${
+                              ext.snystatus === 'Online (Livre)' ? 'bg-green-500' : 'bg-gray-300'
+                            }`} 
+                            title={ext.snystatus === 'Online (Livre)' ? 'Online' : 'Offline'}
+                            />
                           </button>
                         ))}
                     </div>

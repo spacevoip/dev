@@ -137,6 +137,23 @@ export const Login = () => {
               )}
             </button>
 
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-600"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 text-gray-300 bg-gradient-to-br from-indigo-950 via-indigo-900 to-violet-900">ou</span>
+              </div>
+            </div>
+
+            <Link
+              to="/login-agente"
+              className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 text-white py-3.5 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
+            >
+              <span>Login Agente</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+
             <p className="text-center text-base text-gray-300">
               Ainda não tem uma conta?{' '}
               <Link to="/register" className="font-medium text-lg text-violet-400 hover:text-violet-300 transition-colors">

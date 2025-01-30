@@ -49,10 +49,9 @@ export const History = () => {
   const prefetchDirection = useRef<'next' | 'prev'>('next');
 
   const {
-    data: cdrRecords,
+    data,
     loading,
     error,
-    totalCount,
     refetch,
     isRefetching
   } = useCallHistory({
@@ -67,9 +66,12 @@ export const History = () => {
     sortBy,
   });
 
+  const cdrRecords = data?.data || [];
+  const totalCount = data?.count || 0;
+
   // Virtualização
   const rowVirtualizer = useVirtualizer({
-    count: cdrRecords?.length || 0,
+    count: cdrRecords.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 60,
     overscan: 5,
@@ -112,7 +114,7 @@ export const History = () => {
 
   // Converter os registros CDR para o formato CallHistory
   const callHistory: CallHistory[] = useMemo(() => 
-    (cdrRecords || []).map(record => ({
+    cdrRecords.map(record => ({
       id: String(record.id),
       from: formatExtension(record.channel),
       to: record.dst,
@@ -173,6 +175,43 @@ export const History = () => {
       ]),
     });
     doc.save(`historico_chamadas_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+  };
+
+  const handleSelectCall = (id: string) => {
+    setSelectedCalls(prev => 
+      prev.includes(id) 
+        ? prev.filter(callId => callId !== id)
+        : [...prev, id]
+    );
+  };
+
+  const handleSelectAllCalls = (selected: boolean) => {
+    setSelectedCalls(selected ? callHistory.map(call => call.id) : []);
+  };
+
+  const handleDeleteCalls = async (ids: string[]) => {
+    try {
+      const response = await fetch('/api/delete-calls', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ids }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao excluir registros');
+      }
+
+      // Limpa a seleção e atualiza a lista
+      setSelectedCalls([]);
+      refetch();
+
+      // toast.success(`${ids.length} ${ids.length === 1 ? 'registro excluído' : 'registros excluídos'} com sucesso`);
+    } catch (error) {
+      // toast.error('Erro ao excluir registros');
+      console.error('Erro ao excluir registros:', error);
+    }
   };
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
@@ -277,13 +316,9 @@ export const History = () => {
               sortBy={sortBy}
               viewMode={viewMode}
               selectedCalls={selectedCalls}
-              onSelectCall={(id) => {
-                setSelectedCalls(prev => 
-                  prev.includes(id) 
-                    ? prev.filter(callId => callId !== id)
-                    : [...prev, id]
-                );
-              }}
+              onSelectCall={handleSelectCall}
+              onSelectAllCalls={handleSelectAllCalls}
+              onDeleteCalls={handleDeleteCalls}
               virtualizer={rowVirtualizer}
             />
           </div>

@@ -2,7 +2,6 @@ import React from 'react';
 import { Logo } from './Logo';
 import { Navigation } from './Navigation';
 import { CollapseButton } from './CollapseButton';
-import { AccountUser } from './AccountUser';
 import { LogoutButton } from './LogoutButton';
 import { useSidebar } from './SidebarContext';
 import { X } from 'lucide-react';
@@ -39,25 +38,18 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
       
       {/* Conteúdo Principal */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        {/* Informações do Usuário */}
-        <div className="flex-shrink-0 mb-3 sm:mb-4">
-          <AccountUser />
-        </div>
-
         {/* Menu de Navegação com Scroll */}
         <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent pr-1 sm:pr-2">
           <Navigation />
         </div>
         
-        {/* Rodapé Fixo */}
-        <div className="flex-shrink-0 mt-3 sm:mt-4 space-y-3 sm:space-y-4 pt-3 sm:pt-4 border-t border-white/10">
-          <LogoutButton />
+        {/* Footer com Botões */}
+        <div className="flex-shrink-0 mt-auto pt-4">
+          <div className="flex items-center justify-between">
+            <LogoutButton />
+            <CollapseButton />
+          </div>
         </div>
-      </div>
-
-      {/* Botão de Colapso (apenas desktop) */}
-      <div className="hidden lg:block mt-3 sm:mt-4">
-        <CollapseButton />
       </div>
     </aside>
   );
