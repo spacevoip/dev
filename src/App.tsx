@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate, Route, Routes, BrowserRouter, Link } from 'react-router-dom';
+import { Navigate, Route, Routes, BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { AgentProvider } from './contexts/AgentContext';
 import { RealtimeProvider } from './providers/RealtimeProvider';
@@ -90,25 +90,24 @@ function App() {
             <AgentProvider>
               <RealtimeProvider>
                 <Routes>
-                  {/* Rotas públicas */}
                   <Route path="/login" element={<Login />} />
                   <Route path="/login-agente" element={<LoginAgente />} />
                   <Route path="/register" element={<Register />} />
                   
                   {/* Rotas do Agente */}
                   <Route
-                    path="/dash-agente"
-                    element={
-                      <PrivateRouteAgent>
-                        <DashAgente />
-                      </PrivateRouteAgent>
-                    }
-                  />
-                  <Route
                     path="/perfil-agente"
                     element={
                       <PrivateRouteAgent>
                         <PerfilAgente />
+                      </PrivateRouteAgent>
+                    }
+                  />
+                  <Route
+                    path="/dash-agente"
+                    element={
+                      <PrivateRouteAgent>
+                        <DashAgente />
                       </PrivateRouteAgent>
                     }
                   />
@@ -121,75 +120,76 @@ function App() {
                     }
                   />
 
-                  {/* Rotas protegidas */}
-                  <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/extensions" element={<Extensions />} />
-                    <Route path="/extensions/management" element={<ExtensionsManagement />} />
-                    <Route path="/calls" element={<Calls />} />
-                    <Route path="/history" element={<History />} />
-                    <Route path="/did" element={<DID />} />
-                    <Route path="/recharge" element={<Recharge />} />
-                    <Route path="/subscriptions" element={<Subscriptions />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/plans" element={<Plans />} />
-                    <Route path="/queues" element={<Queues />} />
-                    <Route path="/sipauto" element={<SipAuto />} />
-                    <Route path="/mailing/cadastrar" element={<CadastrarMailing />} />
-                    <Route path="/mailing/gerenciar" element={<GerenciarMailing />} />
+                  <Route path="/" element={
+                    <>
+                      <AgentRedirectRoute />
+                      <ProtectedRoute><MainLayout /></ProtectedRoute>
+                    </>
+                  }>
+                    <Route index element={<Navigate to="/dash" replace />} />
+                    <Route path="dash" element={<Dashboard />} />
+                    <Route path="extensions" element={<Extensions />} />
+                    <Route path="extensions/management" element={<ExtensionsManagement />} />
+                    <Route path="queues" element={<Queues />} />
+                    <Route path="calls" element={<Calls />} />
+                    <Route path="history" element={<History />} />
+                    <Route path="did" element={<DID />} />
+                    <Route path="recharge" element={<Recharge />} />
+                    <Route path="subscriptions" element={<Subscriptions />} />
+                    <Route path="settings" element={<Settings />} />
+                    <Route path="plans" element={<Plans />} />
+                    <Route path="sip-auto" element={<SipAuto />} />
+                    <Route path="mailing/cadastrar" element={<CadastrarMailing />} />
+                    <Route path="mailing/gerenciar" element={<GerenciarMailing />} />
                   </Route>
 
-                  {/* Rotas do Admin */}
-                  <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
-                    <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                    <Route path="/admin/instances" element={<AdminInstances />} />
-                    <Route path="/admin/users" element={<AdminUsers />} />
-                    <Route path="/admin/settings" element={<AdminSettings />} />
-                    <Route path="/admin/plans" element={<AdminPlans />} />
-                    <Route path="/admin/call-history" element={<CallHistory />} />
-                    <Route path="/admin/extensions" element={<AdminExtensions />} />
-                    <Route path="/admin/callerid-block" element={<AdminCallerIDBlock />} />
-                    <Route path="/admin/active-calls" element={<AdminActiveCalls />} />
-                    <Route path="/admin/finance" element={<Finance />} />
+                  <Route path="/admin" element={
+                    <>
+                      <AgentRedirectRoute />
+                      <ProtectedRoute requireAdmin><AdminLayout /></ProtectedRoute>
+                    </>
+                  }>
+                    <Route index element={<Navigate to="dashboard" replace />} />
+                    <Route path="dashboard" element={<AdminDashboard />} />
+                    <Route path="instances" element={<AdminInstances />} />
+                    <Route path="users" element={<AdminUsers />} />
+                    <Route path="extensions" element={<AdminExtensions />} />
+                    <Route path="calleridblock" element={<AdminCallerIDBlock />} />
+                    <Route path="call-history" element={<CallHistory />} />
+                    <Route path="active-calls" element={<AdminActiveCalls />} />
+                    <Route path="finance" element={<Finance />} />
+                    <Route path="settings" element={<AdminSettings />} />
+                    <Route path="plans" element={<AdminPlans />} />
                   </Route>
 
-                  {/* Rotas do Reseller */}
-                  <Route element={<ProtectedRoute><ResellerLayout /></ProtectedRoute>}>
-                    <Route path="/reseller/dashboard" element={<ResellerDashboard />} />
-                    <Route path="/reseller/customers" element={<ResellerCustomers />} />
-                    <Route path="/reseller/plans" element={<ResellerPlans />} />
+                  <Route path="/reseller" element={
+                    <>
+                      <AgentRedirectRoute />
+                      <ProtectedRoute requireReseller><ResellerLayout /></ProtectedRoute>
+                    </>
+                  }>
+                    <Route index element={<Navigate to="dashboard" replace />} />
+                    <Route path="dashboard" element={<ResellerDashboard />} />
+                    <Route path="customers" element={<ResellerCustomers />} />
+                    <Route path="plans" element={<ResellerPlans />} />
+                    <Route path="*" element={<div>Em desenvolvimento</div>} />
                   </Route>
 
-                  {/* Rota raiz - Redireciona para dash-agente se estiver logado como agente */}
-                  <Route 
-                    path="/" 
-                    element={
-                      <AgentRedirectRoute>
-                        <MainLayout>
-                          <Dashboard />
-                        </MainLayout>
-                      </AgentRedirectRoute>
-                    } 
-                  />
-
-                  {/* Rota 404 */}
-                  <Route 
-                    path="*" 
-                    element={
-                      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-                        <div className="text-center">
-                          <h1 className="text-6xl font-bold text-gray-900">404</h1>
-                          <p className="mt-4 text-xl text-gray-600">Página não encontrada</p>
-                          <Link 
-                            to="/" 
-                            className="mt-6 inline-block px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                          >
-                            Voltar ao início
-                          </Link>
-                        </div>
+                  {/* Fallback route para páginas não encontradas */}
+                  <Route path="*" element={
+                    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+                      <div className="text-center">
+                        <h1 className="text-6xl font-bold text-gray-900">404</h1>
+                        <p className="mt-4 text-xl text-gray-600">Página não encontrada</p>
+                        <button
+                          onClick={() => window.location.href = '/'}
+                          className="mt-6 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                        >
+                          Voltar ao início
+                        </button>
                       </div>
-                    } 
-                  />
+                    </div>
+                  } />
                 </Routes>
               </RealtimeProvider>
             </AgentProvider>
