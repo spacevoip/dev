@@ -1,0 +1,15 @@
+{
+  "root": "dist",
+  "clean_urls": true,
+  "routes": {
+    "/**": "index.html"
+  },
+  "https_only": true,
+  "headers": {
+    "/**": {
+      "Cache-Control": "no-store, no-cache, must-revalidate",
+      "Access-Control-Allow-Origin": "*"
+    }
+  },
+  "error_page": "404.html"
+}

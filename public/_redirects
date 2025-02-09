@@ -1,0 +1,16 @@
+/* /index.html 200
+
+# Rotas específicas
+/dash-agente/* /index.html 200
+/login-agente/* /index.html 200
+/perfil-agente/* /index.html 200
+/historico-agente/* /index.html 200
+
+# Fallback para todas as outras rotas
+/* /index.html 200
+
+# Fallback para 404
+/* /404.html 404
+
+# Fallback para erros
+/* /200.html 200!
