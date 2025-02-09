@@ -38,8 +38,8 @@ export const LoginAgente = () => {
           duration: 2000,
         });
         
-        // Redirecionar para o dashboard do agente com refresh
-        window.location.href = '/dash-agente';
+        // Usar navigate com replace para evitar histórico indesejado
+        navigate('/', { replace: true });
       }
     } catch (err) {
       setError('Erro inesperado ao fazer login. Por favor, tente novamente.');
@@ -116,42 +116,44 @@ export const LoginAgente = () => {
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={loading || !credentials.numero || !credentials.senha}
+              className={`w-full flex items-center justify-center px-4 py-4 border border-transparent rounded-xl shadow-sm text-base font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors
+                ${loading ? 'opacity-50 cursor-not-allowed' : ''}
+                ${(!credentials.numero || !credentials.senha) ? 'opacity-50 cursor-not-allowed' : ''}
+              `}
             >
               {loading ? (
-                <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto" />
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Entrando...
+                </>
               ) : (
                 'Entrar'
               )}
             </button>
-
-            <p className="text-center text-base text-gray-300">
-              Área exclusiva para agentes.{' '}
-              <Link to="/login" className="font-medium text-lg text-blue-400 hover:text-blue-300 transition-colors">
-                Voltar para login principal
-              </Link>
-            </p>
           </form>
+
+          <div className="mt-6 text-center">
+            <Link to="/" className="text-sm text-gray-300 hover:text-white transition-colors">
+              ← Voltar para o início
+            </Link>
+          </div>
         </div>
       </div>
 
       {/* Lado Direito - Imagem */}
-      <div className="hidden md:block md:w-1/2 relative overflow-hidden">
-        <div 
-          className="absolute inset-0 bg-cover bg-center transform hover:scale-105 transition-transform duration-[3000ms]" 
-          style={{ 
-            backgroundImage: 'url(https://avoip.com.br/wp-content/uploads/2024/02/callcenter.jpg)'
-          }}
-        />
-        {/* Gradiente superior */}
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-950/80 via-transparent to-transparent" />
-        {/* Gradiente lateral */}
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-950/90 via-blue-950/30 to-transparent" />
-        {/* Efeito de brilho */}
-        <div className="absolute inset-0 opacity-30 mix-blend-overlay bg-gradient-to-br from-blue-500/20 via-transparent to-indigo-500/20" />
-        {/* Efeito de partículas */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_white_1px,_transparent_1px)] bg-[length:20px_20px] opacity-[0.03]" />
+      <div className="hidden md:block md:w-1/2 bg-cover bg-center" style={{ backgroundImage: 'url(/agent-login-bg.jpg)' }}>
+        <div className="h-full w-full bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-8">
+          <div className="max-w-md text-center">
+            <h3 className="text-2xl font-bold text-white mb-4">Central de Atendimento</h3>
+            <p className="text-gray-200">
+              Gerencie suas chamadas, acompanhe estatísticas e mantenha-se conectado com sua equipe através do nosso painel intuitivo.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
