@@ -23,19 +23,14 @@ export const sendOTP = async (phoneNumber: string): Promise<{ success: boolean; 
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_TOKEN}`,
-        'Accept': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+        'Authorization': `Bearer ${API_TOKEN}`
       },
-      mode: 'cors',
-      credentials: 'omit',
       body: JSON.stringify({ phone_number: formattedPhone })
     });
 
-    // Se a resposta não for ok, lança um erro com mais detalhes
+    // Se a resposta não for ok, lança um erro
     if (!response.ok) {
-      const errorDetail = await response.text().catch(() => 'No error details available');
-      throw new Error(`HTTP error! status: ${response.status}, details: ${errorDetail}`);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     // Tenta fazer o parse do JSON apenas se houver conteúdo
@@ -47,30 +42,20 @@ export const sendOTP = async (phoneNumber: string): Promise<{ success: boolean; 
 
     try {
       const data = JSON.parse(text);
-      if (!data) {
-        throw new Error('Empty JSON response');
-      }
       return { success: true, message: data.message || 'Código enviado com sucesso' };
     } catch (parseError) {
-      console.error('Failed to parse API response:', text, parseError);
+      console.error('Failed to parse API response:', text);
       return { success: false, message: 'Erro ao processar resposta do servidor' };
     }
 
   } catch (error) {
     console.error('Erro ao enviar OTP:', error);
-    // Verifica se é um erro de rede ou CORS
-    if (error instanceof TypeError) {
-      if (error.message.includes('Failed to fetch')) {
-        return { 
-          success: false, 
-          message: 'Erro de conexão com o servidor. Por favor, verifique sua internet e tente novamente.'
-        };
-      } else if (error.message.includes('CORS')) {
-        return {
-          success: false,
-          message: 'Erro de acesso ao servidor. Por favor, tente novamente em alguns instantes.'
-        };
-      }
+    // Verifica se é um erro de rede
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      return { 
+        success: false, 
+        message: 'Erro de conexão com o servidor. Por favor, verifique sua internet e tente novamente.'
+      };
     }
     return { 
       success: false, 
