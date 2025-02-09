@@ -12,6 +12,10 @@ services:
         value: https://api.appinovavoip.com
       - key: VITE_SECRET_KEY
         value: inovavoip-secure-key-2024
+      - key: VITE_SUPABASE_URL
+        value: https://qmkpwbzlvxjyqwxlzxfp.supabase.co
+      - key: VITE_SUPABASE_ANON_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFta3B3YnpsdnhqeXF3eGx6eGZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDY5NzY1ODAsImV4cCI6MjAyMjU1MjU4MH0.aqnZpBqxRBZHLjXVbmYYSgQFyTLOUDtQxKPGhANyL8k
     routes:
       - type: rewrite
         source: /api/*
@@ -19,6 +23,9 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
+      - type: rewrite
+        source: /rest/v1/*
+        destination: https://qmkpwbzlvxjyqwxlzxfp.supabase.co/rest/v1/:splat
     headers:
       - path: /*
         name: Cache-Control
@@ -32,3 +39,15 @@ services:
       - path: /*
         name: Access-Control-Allow-Headers
         value: "*"
+      - path: /*
+        name: X-Frame-Options
+        value: "SAMEORIGIN"
+      - path: /*
+        name: X-Content-Type-Options
+        value: "nosniff"
+      - path: /*
+        name: Referrer-Policy
+        value: "strict-origin-when-cross-origin"
+      - path: /*
+        name: Strict-Transport-Security
+        value: "max-age=31536000; includeSubDomains"
