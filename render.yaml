@@ -2,7 +2,20 @@ services:
   - type: web
     name: resp
     env: static
-    buildCommand: npm install && npm run build && cp dist/index.html dist/200.html && cp dist/index.html dist/404.html
+    buildCommand: |
+      npm install && npm run build
+      # Cria diretórios para todas as rotas do SPA
+      mkdir -p dist/dash-agente dist/perfil-agente dist/historico-agente dist/plans dist/login dist/login-agente
+      # Copia index.html para cada diretório
+      cp dist/index.html dist/dash-agente/index.html
+      cp dist/index.html dist/perfil-agente/index.html
+      cp dist/index.html dist/historico-agente/index.html
+      cp dist/index.html dist/plans/index.html
+      cp dist/index.html dist/login/index.html
+      cp dist/index.html dist/login-agente/index.html
+      # Copia para arquivos de fallback
+      cp dist/index.html dist/200.html
+      cp dist/index.html dist/404.html
     staticPublishPath: ./dist
     pullRequestPreviewsEnabled: true
     autoDeploy: true
@@ -17,28 +30,58 @@ services:
       - key: VITE_SUPABASE_ANON_KEY
         value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNub2xsY256Z2FtZWNpa2VveW1qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU1ODk3NzksImV4cCI6MjA1MTE2NTc3OX0.XBzhypt2ZGiYbQKL3HEFZyhTEhjj4c1iJf6uCAPQOEg
     routes:
+      # API proxies
       - type: rewrite
         source: /api/*
         destination: https://api.appinovavoip.com/:splat
       - type: rewrite
         source: /rest/v1/*
         destination: https://cnollcnzgamecikeoymj.supabase.co/rest/v1/:splat
+      
+      # Rotas específicas do SPA
+      - type: rewrite
+        source: /dash-agente
+        destination: /dash-agente/index.html
+      - type: rewrite
+        source: /dash-agente/*
+        destination: /dash-agente/index.html
+      - type: rewrite
+        source: /perfil-agente
+        destination: /perfil-agente/index.html
+      - type: rewrite
+        source: /perfil-agente/*
+        destination: /perfil-agente/index.html
+      - type: rewrite
+        source: /historico-agente
+        destination: /historico-agente/index.html
+      - type: rewrite
+        source: /historico-agente/*
+        destination: /historico-agente/index.html
+      - type: rewrite
+        source: /plans
+        destination: /plans/index.html
+      - type: rewrite
+        source: /plans/*
+        destination: /plans/index.html
+      - type: rewrite
+        source: /login
+        destination: /login/index.html
+      - type: rewrite
+        source: /login-agente
+        destination: /login-agente/index.html
+      
+      # Rota padrão para assets estáticos
+      - type: rewrite
+        source: /assets/*
+        destination: /assets/:splat
+      
+      # Fallback para todas as outras rotas
       - type: rewrite
         source: /*
         destination: /index.html
+    
     headers:
-      - path: /*
-        name: Cache-Control
-        value: no-store, no-cache, must-revalidate
-      - path: /*
-        name: Access-Control-Allow-Origin
-        value: "*"
-      - path: /*
-        name: Access-Control-Allow-Methods
-        value: "GET, POST, PUT, DELETE, OPTIONS"
-      - path: /*
-        name: Access-Control-Allow-Headers
-        value: "*"
+      # Security headers
       - path: /*
         name: X-Frame-Options
         value: "SAMEORIGIN"
@@ -51,3 +94,25 @@ services:
       - path: /*
         name: Strict-Transport-Security
         value: "max-age=31536000; includeSubDomains"
+      
+      # Cache control
+      - path: /assets/*
+        name: Cache-Control
+        value: "public, max-age=31536000, immutable"
+      - path: /*.html
+        name: Cache-Control
+        value: "no-store, no-cache, must-revalidate"
+      - path: /*
+        name: Cache-Control
+        value: "no-store, no-cache, must-revalidate"
+      
+      # CORS headers
+      - path: /*
+        name: Access-Control-Allow-Origin
+        value: "*"
+      - path: /*
+        name: Access-Control-Allow-Methods
+        value: "GET, POST, PUT, DELETE, OPTIONS"
+      - path: /*
+        name: Access-Control-Allow-Headers
+        value: "*"

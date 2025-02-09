@@ -1,9 +1,17 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
-interface PlanPrice {
+interface PlanData {
   id: string;
   valor: number;
+  validade: string;
+  limite: number;
+}
+
+interface PlanInfo {
+  price: number;
+  validity: string;
+  limit: number;
 }
 
 // Mapeamento correto dos IDs do banco para IDs do frontend
@@ -15,43 +23,48 @@ const ID_MAPPING: Record<string, string> = {
 };
 
 export const usePlanPrices = () => {
-  const [prices, setPrices] = useState<Record<string, number>>({});
+  const [planInfo, setPlanInfo] = useState<Record<string, PlanInfo>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchPrices = async () => {
+    const fetchPlanInfo = async () => {
       try {
         setLoading(true);
         
         const { data, error } = await supabase
           .from('planos')
-          .select('id, valor');
+          .select('id, valor, validade, limite');
 
         if (error) {
+          console.error('Erro ao buscar informações dos planos:', error);
           return;
         }
 
         if (data) {
-          const priceMap = data.reduce((acc: Record<string, number>, plan: PlanPrice) => {
+          const infoMap = data.reduce((acc: Record<string, PlanInfo>, plan: PlanData) => {
             const frontendId = ID_MAPPING[plan.id];
             if (frontendId) {
-              acc[frontendId] = plan.valor;
+              acc[frontendId] = {
+                price: plan.valor,
+                validity: plan.validade,
+                limit: plan.limite
+              };
             } else {
               console.log('ID não encontrado no mapeamento:', plan.id);
             }
             return acc;
           }, {});
           
-          setPrices(priceMap);
+          setPlanInfo(infoMap);
         }
       } catch (err) {
-        console.error('Erro ao buscar preços dos planos:', err);
+        console.error('Erro ao buscar informações dos planos:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPrices();
+    fetchPlanInfo();
 
     const subscription = supabase
       .channel('planos_changes')
@@ -63,7 +76,7 @@ export const usePlanPrices = () => {
         }, 
         (payload) => {
           console.log('Mudança detectada:', payload);
-          fetchPrices();
+          fetchPlanInfo();
         }
       )
       .subscribe();
@@ -73,5 +86,13 @@ export const usePlanPrices = () => {
     };
   }, []);
 
-  return { prices, loading };
+  return {
+    planInfo,
+    loading,
+    // Mantém a compatibilidade com o código existente
+    prices: Object.entries(planInfo).reduce((acc: Record<string, number>, [key, value]) => {
+      acc[key] = value.price;
+      return acc;
+    }, {})
+  };
 };

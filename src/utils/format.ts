@@ -1,6 +1,8 @@
 export const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat('pt-BR', {
+  return value.toLocaleString('pt-BR', {
     style: 'currency',
-    currency: 'BRL'
-  }).format(value);
+    currency: 'BRL',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
 };

@@ -212,8 +212,12 @@ const PurchasePlanModal: React.FC<PurchasePlanModalProps> = ({
                               <p className="text-blue-100 mt-1">Plano Selecionado</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-3xl font-bold">R$ {planPrice.toFixed(2)}</p>
-                              <p className="text-blue-100">por período</p>
+                              <div className="flex items-baseline gap-2">
+                                <span className="text-2xl font-bold text-gray-900">
+                                  {formatCurrency(planPrice)}
+                                </span>
+                                <span className="text-gray-500 text-sm">/Periodo</span>
+                              </div>
                             </div>
                           </div>
                           <div className="mt-6 grid grid-cols-3 gap-4">
@@ -379,7 +383,7 @@ const PurchasePlanModal: React.FC<PurchasePlanModalProps> = ({
                             {/* Informações do Plano */}
                             <div className="bg-blue-50 rounded-xl p-4 mb-6">
                               <h3 className="text-lg font-semibold text-gray-900">{plan.name}</h3>
-                              <p className="text-blue-600 font-medium">R$ {planPrice.toFixed(2)}</p>
+                              <p className="text-blue-600 font-medium">{formatCurrency(planPrice)}</p>
                             </div>
 
                             {/* QR Code */}

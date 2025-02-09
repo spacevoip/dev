@@ -35,9 +35,12 @@ export function AgentMenu({ menuItems }: AgentMenuProps) {
   const { agent, setAgent } = useAgent();
 
   const handleLogout = () => {
+    // Remove dados do agente
     localStorage.removeItem('agent');
     setAgent(null);
-    window.location.href = '/login-agente';
+    
+    // Usa navigate ao invés de window.location
+    navigate('/login-agente', { replace: true });
   };
 
   return (

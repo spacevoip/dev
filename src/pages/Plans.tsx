@@ -6,28 +6,21 @@ import { PlanCard } from '../components/Plans/PlanCard';
 import { Toast } from '../components/ui/Toast';
 import PurchasePlanModal from '../components/Plans/PurchasePlanModal';
 import { Plan } from '../types/Plan';
+import { formatCurrency } from '../utils/format';
 
-const plans: Plan[] = [
+const plans: Omit<Plan, 'extensionsLimit' | 'validity'>[] = [
   {
     id: 'trial',
     name: 'Sip Trial',
-    extensionsLimit: 3,
-    validity: 1,
     features: [
-      'Limite de 3 ramais',
-      'Validade de 1 dia',
-      'Gravação básica',
       'Minutos ilimitados',
+      'Gravação básica',
     ],
   },
   {
     id: 'basic',
     name: 'Sip Basico',
-    extensionsLimit: 5,
-    validity: 20,
     features: [
-      'Limite de 5 ramais',
-      'Validade de 20 dias',
       'Minutos ilimitados',
       'Gravação básica',
       'Relatórios detalhados',
@@ -36,12 +29,8 @@ const plans: Plan[] = [
   {
     id: 'premium',
     name: 'Sip Premium',
-    extensionsLimit: 13,
-    validity: 25,
     isPopular: true,
     features: [
-      'Limite de 13 ramais',
-      'Validade de 25 dias',
       'Minutos ilimitados',
       'Gravação básica',
       'Relatórios detalhados',
@@ -50,11 +39,7 @@ const plans: Plan[] = [
   {
     id: 'exclusive',
     name: 'Sip Exclusive',
-    extensionsLimit: 15,
-    validity: 25,
     features: [
-      'Limite de 15 ramais',
-      'Validade de 25 dias',
       'Minutos ilimitados',
       'Gravação básica',
       'Relatórios detalhados',
@@ -64,14 +49,22 @@ const plans: Plan[] = [
 
 export default function Plans() {
   const { currentUser, loading: userLoading } = useCurrentUser();
-  const { prices, loading: pricesLoading } = usePlanPrices();
+  const { planInfo, loading: pricesLoading } = usePlanPrices();
   const [showToast, setShowToast] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
 
   const loading = pricesLoading || userLoading;
 
-  const handleSelectPlan = (plan: Plan) => {
+  const handleSelectPlan = (planBase: Omit<Plan, 'extensionsLimit' | 'validity'>) => {
+    if (!planInfo[planBase.id]) return;
+    
+    const plan: Plan = {
+      ...planBase,
+      extensionsLimit: planInfo[planBase.id].limit,
+      validity: parseInt(planInfo[planBase.id].validity)
+    };
+    
     setSelectedPlan(plan);
     setShowPurchaseModal(true);
   };
@@ -107,104 +100,110 @@ export default function Plans() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
-        {plans.map((plan) => (
-          <div
-            key={plan.id}
-            className={`relative bg-white rounded-2xl shadow-md transition-all duration-300 hover:shadow-lg ${
-              plan.isPopular ? 'border-2 border-blue-500 scale-[1.02]' : 'border border-gray-200'
-            }`}
-          >
-            {plan.isPopular && (
-              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white px-6 py-1.5 rounded-full font-medium shadow-md flex items-center gap-1.5">
-                  <Crown className="h-4 w-4" />
-                  <span className="text-sm">Mais Popular</span>
+        {plans.map((plan) => {
+          const info = planInfo[plan.id];
+          const features = [
+            `Limite de ${info?.limit || '...'} ramais`,
+            `Validade de ${info?.validity || '...'} dias`,
+            ...plan.features
+          ];
+
+          return (
+            <div
+              key={plan.id}
+              className={`relative bg-white rounded-2xl shadow-md transition-all duration-300 hover:shadow-lg ${
+                plan.isPopular ? 'border-2 border-blue-500 scale-[1.02]' : 'border border-gray-200'
+              }`}
+            >
+              {plan.isPopular && (
+                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                  <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white px-6 py-1.5 rounded-full font-medium shadow-md flex items-center gap-1.5">
+                    <Crown className="h-4 w-4" />
+                    <span className="text-sm">Mais Popular</span>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {currentUser?.plano === plan.name && (
-              <div className="absolute -top-3 right-4">
-                <span className={`text-xs font-medium px-3 py-1 rounded-full shadow-md ${
-                  currentUser.valido === true
-                    ? 'bg-green-500 text-white'
-                    : 'bg-red-500 text-white'
-                }`}>
-                  {currentUser.valido === true ? 'Plano Atual' : 'Plano Vencido'}
-                </span>
-              </div>
-            )}
-
-            <div className="p-6 space-y-5">
-              <div className="space-y-3">
-                <h3 className="text-xl font-bold text-gray-900">{plan.name}</h3>
-                <div className="flex items-baseline">
-                  <span className="text-3xl font-bold text-gray-900">
-                    {loading ? (
-                      "R$ ..."
-                    ) : (
-                      `R$ ${typeof prices[plan.id] === 'number' ? prices[plan.id].toFixed(2) : "..."}`
-                    )}
+              {currentUser?.plano === plan.name && (
+                <div className="absolute -top-3 right-4">
+                  <span className={`text-xs font-medium px-3 py-1 rounded-full shadow-md ${
+                    currentUser.valido === true
+                      ? 'bg-green-500 text-white'
+                      : 'bg-red-500 text-white'
+                  }`}>
+                    {currentUser.valido === true ? 'Plano Atual' : 'Plano Vencido'}
                   </span>
-                  <span className="text-gray-500 ml-2 text-sm">/Periodo</span>
                 </div>
-              </div>
+              )}
 
-              <div className="border-t border-gray-200 pt-5">
-                <ul className="space-y-3">
-                  {plan.features.map((feature, index) => (
-                    <li key={index} className="flex items-center gap-2.5">
-                      <div className={`flex-shrink-0 ${plan.isPopular ? 'text-blue-500' : 'text-gray-400'}`}>
-                        <Check className="h-5 w-5" />
-                      </div>
-                      <span className="text-gray-700 text-sm">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <div className="p-6 space-y-5">
+                <div className="space-y-3">
+                  <h3 className="text-xl font-bold text-gray-900">{plan.name}</h3>
+                  <div className="flex items-baseline">
+                    <span className="text-3xl font-bold text-gray-900">
+                      {loading ? (
+                        "R$ ..."
+                      ) : (
+                        info ? formatCurrency(info.price) : "..."
+                      )}
+                    </span>
+                    <span className="text-gray-500 ml-2 text-sm">/Periodo</span>
+                  </div>
+                </div>
 
-              <button
-                className={`w-full py-3 px-4 rounded-xl font-medium text-sm transition-all duration-200 ${
-                  currentUser?.plano === plan.name && currentUser.valido === true
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                <div className="border-t border-gray-200 pt-5">
+                  <ul className="space-y-3">
+                    {features.map((feature, index) => (
+                      <li key={index} className="flex items-center gap-2.5">
+                        <div className={`flex-shrink-0 ${plan.isPopular ? 'text-blue-500' : 'text-gray-400'}`}>
+                          <Check className="h-5 w-5" />
+                        </div>
+                        <span className="text-gray-700 text-sm">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <button
+                  className={`w-full py-3 px-4 rounded-xl font-medium text-sm transition-all duration-200 ${
+                    currentUser?.plano === plan.name && currentUser.valido === true
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : currentUser?.plano === plan.name && currentUser.valido === false
+                      ? 'bg-red-600 text-white hover:bg-red-700'
+                      : plan.id === 'trial' && currentUser?.plano && currentUser.plano !== 'Sip Trial'
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : plan.isPopular
+                      ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md hover:shadow-blue-100'
+                      : 'bg-gray-900 text-white hover:bg-gray-800'
+                  }`}
+                  disabled={
+                    (currentUser?.plano === plan.name && currentUser.valido === true) || 
+                    (plan.id === 'trial' && currentUser?.plano && currentUser.plano !== 'Sip Trial')
+                  }
+                  onClick={() => handleSelectPlan(plan)}
+                >
+                  {currentUser?.plano === plan.name && currentUser.valido === true
+                    ? 'Plano Atual'
                     : currentUser?.plano === plan.name && currentUser.valido === false
-                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    ? 'Renovar Plano'
                     : plan.id === 'trial' && currentUser?.plano && currentUser.plano !== 'Sip Trial'
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : plan.isPopular
-                    ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md hover:shadow-blue-100'
-                    : 'bg-gray-900 text-white hover:bg-gray-800'
-                }`}
-                disabled={
-                  (currentUser?.plano === plan.name && currentUser.valido === true) || 
-                  (plan.id === 'trial' && currentUser?.plano && currentUser.plano !== 'Sip Trial')
-                }
-                onClick={() => handleSelectPlan(plan)}
-              >
-                {currentUser?.plano === plan.name && currentUser.valido === true
-                  ? 'Plano Atual'
-                  : currentUser?.plano === plan.name && currentUser.valido === false
-                  ? 'Renovar Plano'
-                  : plan.id === 'trial' && currentUser?.plano && currentUser.plano !== 'Sip Trial'
-                  ? 'Não Disponível'
-                  : 'Fazer Upgrade'
-                }
-              </button>
+                    ? 'Não Disponível'
+                    : 'Fazer Upgrade'
+                  }
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {showPurchaseModal && selectedPlan && currentUser && (
         <PurchasePlanModal
           isOpen={showPurchaseModal}
-          onClose={() => {
-            setShowPurchaseModal(false);
-            setSelectedPlan(null);
-          }}
+          onClose={() => setShowPurchaseModal(false)}
           plan={selectedPlan}
           currentUser={currentUser}
-          planPrice={prices[selectedPlan.id] || 0}
+          planPrice={planInfo[selectedPlan.id]?.price || 0}
           onPaymentSuccess={handlePaymentSuccess}
         />
       )}
