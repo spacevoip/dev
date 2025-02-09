@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: sistemacompletoinova
+    name: resp
     env: static
     buildCommand: npm install && npm run build && cp dist/index.html dist/200.html && cp dist/index.html dist/404.html
     staticPublishPath: ./dist
