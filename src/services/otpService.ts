@@ -7,6 +7,10 @@ const API_TOKEN = import.meta.env.VITE_OTP_API_TOKEN;
 
 export const sendOTP = async (phoneNumber: string): Promise<{ success: boolean; message: string }> => {
   try {
+    // Log para debug em produção
+    console.log('Iniciando envio de OTP para:', phoneNumber);
+    console.log('API URL:', API_URL);
+
     // Verifica se o telefone já está cadastrado
     const exists = await checkPhoneExists(phoneNumber);
     if (exists) {
@@ -18,45 +22,95 @@ export const sendOTP = async (phoneNumber: string): Promise<{ success: boolean; 
 
     // Remove todos os caracteres não numéricos
     const formattedPhone = phoneNumber.replace(/\D/g, '');
+    console.log('Telefone formatado:', formattedPhone);
 
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_TOKEN}`
-      },
-      body: JSON.stringify({ phone_number: formattedPhone })
+    // Prepara o corpo da requisição
+    const requestBody = { phone_number: formattedPhone };
+    console.log('Request body:', requestBody);
+
+    // Tenta fazer a requisição usando XMLHttpRequest para debug
+    return new Promise((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', API_URL, true);
+      
+      // Headers
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.setRequestHeader('Authorization', `Bearer ${API_TOKEN}`);
+      xhr.setRequestHeader('Accept', 'application/json');
+      
+      // Logs de estado
+      xhr.onreadystatechange = function() {
+        console.log('XHR State:', xhr.readyState);
+        if (xhr.readyState === 4) {
+          console.log('Status:', xhr.status);
+          console.log('Response:', xhr.responseText);
+          console.log('Response Headers:', xhr.getAllResponseHeaders());
+          
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              if (!xhr.responseText) {
+                console.log('Resposta vazia recebida');
+                resolve({
+                  success: true,
+                  message: 'Código enviado com sucesso'
+                });
+                return;
+              }
+
+              const data = JSON.parse(xhr.responseText);
+              resolve({
+                success: true,
+                message: data.message || 'Código enviado com sucesso'
+              });
+            } catch (parseError) {
+              console.error('Erro ao fazer parse da resposta:', parseError);
+              console.log('Resposta raw:', xhr.responseText);
+              // Se não conseguir fazer o parse mas o status for 200, considera sucesso
+              if (xhr.status === 200) {
+                resolve({
+                  success: true,
+                  message: 'Código enviado com sucesso'
+                });
+              } else {
+                resolve({
+                  success: false,
+                  message: 'Erro ao processar resposta do servidor'
+                });
+              }
+            }
+          } else {
+            console.error('Erro HTTP:', xhr.status, xhr.statusText);
+            resolve({
+              success: false,
+              message: `Erro ao enviar código (${xhr.status}). Por favor, tente novamente.`
+            });
+          }
+        }
+      };
+
+      // Error handler
+      xhr.onerror = function(e) {
+        console.error('XHR Error:', e);
+        resolve({
+          success: false,
+          message: 'Erro de conexão com o servidor. Por favor, tente novamente.'
+        });
+      };
+
+      // Envia a requisição
+      try {
+        xhr.send(JSON.stringify(requestBody));
+      } catch (sendError) {
+        console.error('Erro ao enviar requisição:', sendError);
+        resolve({
+          success: false,
+          message: 'Erro ao enviar requisição. Por favor, tente novamente.'
+        });
+      }
     });
 
-    // Se a resposta não for ok, lança um erro
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    // Tenta fazer o parse do JSON apenas se houver conteúdo
-    const text = await response.text();
-    if (!text) {
-      console.error('API returned empty response');
-      return { success: false, message: 'Erro ao enviar código: resposta vazia do servidor' };
-    }
-
-    try {
-      const data = JSON.parse(text);
-      return { success: true, message: data.message || 'Código enviado com sucesso' };
-    } catch (parseError) {
-      console.error('Failed to parse API response:', text);
-      return { success: false, message: 'Erro ao processar resposta do servidor' };
-    }
-
   } catch (error) {
-    console.error('Erro ao enviar OTP:', error);
-    // Verifica se é um erro de rede
-    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-      return { 
-        success: false, 
-        message: 'Erro de conexão com o servidor. Por favor, verifique sua internet e tente novamente.'
-      };
-    }
+    console.error('Erro geral no sendOTP:', error);
     return { 
       success: false, 
       message: 'Erro ao enviar código de verificação. Por favor, tente novamente em alguns instantes.'
