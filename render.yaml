@@ -6,16 +6,16 @@ services:
     staticPublishPath: ./dist
     pullRequestPreviewsEnabled: true
     autoDeploy: true
-    branch: main
+    branch: build
     envVars:
       - key: VITE_API_URL
         value: https://api.appinovavoip.com
       - key: VITE_SECRET_KEY
         value: inovavoip-secure-key-2024
       - key: VITE_SUPABASE_URL
-        value: https://qmkpwbzlvxjyqwxlzxfp.supabase.co
+        value: https://cnollcnzgamecikeoymj.supabase.co
       - key: VITE_SUPABASE_ANON_KEY
-        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFta3B3YnpsdnhqeXF3eGx6eGZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDY5NzY1ODAsImV4cCI6MjAyMjU1MjU4MH0.aqnZpBqxRBZHLjXVbmYYSgQFyTLOUDtQxKPGhANyL8k
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNub2xsY256Z2FtZWNpa2VveW1qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU1ODk3NzksImV4cCI6MjA1MTE2NTc3OX0.XBzhypt2ZGiYbQKL3HEFZyhTEhjj4c1iJf6uCAPQOEg
     routes:
       - type: rewrite
         source: /api/*
@@ -25,7 +25,7 @@ services:
         destination: /index.html
       - type: rewrite
         source: /rest/v1/*
-        destination: https://qmkpwbzlvxjyqwxlzxfp.supabase.co/rest/v1/:splat
+        destination: https://cnollcnzgamecikeoymj.supabase.co/rest/v1/:splat
     headers:
       - path: /*
         name: Cache-Control
