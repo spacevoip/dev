@@ -38,8 +38,8 @@ export const LoginAgente = () => {
           duration: 2000,
         });
         
-        // Usar navigate com replace para evitar histórico indesejado
-        navigate('/', { replace: true });
+        // Redirecionar diretamente para o dashboard do agente
+        navigate('/dash-agente', { replace: true });
       }
     } catch (err) {
       setError('Erro inesperado ao fazer login. Por favor, tente novamente.');
