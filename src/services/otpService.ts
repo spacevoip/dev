@@ -28,16 +28,39 @@ export const sendOTP = async (phoneNumber: string): Promise<{ success: boolean; 
       body: JSON.stringify({ phone_number: formattedPhone })
     });
 
-    const data = await response.json();
-
+    // Se a resposta não for ok, lança um erro
     if (!response.ok) {
-      throw new Error(data.message || 'Erro ao enviar código');
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    return { success: true, message: data.message };
+    // Tenta fazer o parse do JSON apenas se houver conteúdo
+    const text = await response.text();
+    if (!text) {
+      console.error('API returned empty response');
+      return { success: false, message: 'Erro ao enviar código: resposta vazia do servidor' };
+    }
+
+    try {
+      const data = JSON.parse(text);
+      return { success: true, message: data.message || 'Código enviado com sucesso' };
+    } catch (parseError) {
+      console.error('Failed to parse API response:', text);
+      return { success: false, message: 'Erro ao processar resposta do servidor' };
+    }
+
   } catch (error) {
     console.error('Erro ao enviar OTP:', error);
-    return { success: false, message: 'Erro ao enviar código de verificação' };
+    // Verifica se é um erro de rede
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      return { 
+        success: false, 
+        message: 'Erro de conexão com o servidor. Por favor, verifique sua internet e tente novamente.'
+      };
+    }
+    return { 
+      success: false, 
+      message: 'Erro ao enviar código de verificação. Por favor, tente novamente em alguns instantes.'
+    };
   }
 };
 
@@ -46,7 +69,6 @@ export const verifyOTP = async (phoneNumber: string, code: string): Promise<bool
     // Verifica se o telefone já está cadastrado
     const exists = await checkPhoneExists(phoneNumber);
     if (exists) {
-      // toast.error('Este número de telefone já está cadastrado. Para mais informações, entre em contato conosco pelo chat.');
       return false;
     }
 
