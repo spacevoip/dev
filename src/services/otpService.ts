@@ -2,7 +2,11 @@ import { supabase } from '../lib/supabase';
 import { checkPhoneExists } from './userService';
 import { toast } from 'sonner';
 
-const API_URL = '/send-otp';  // Usando o proxy configurado no Vite
+// Em produção usa a URL completa, em dev usa o proxy
+const API_URL = import.meta.env.PROD 
+  ? 'https://intermed.appinovavoip.com:5188/send-otp'
+  : '/send-otp';
+
 const API_TOKEN = '2dcd63c2-4fb1-4273-9e85-736eaaf4e0c5';  // Token fixo da API
 
 export const sendOTP = async (phoneNumber: string): Promise<{ success: boolean; message: string }> => {
@@ -10,6 +14,7 @@ export const sendOTP = async (phoneNumber: string): Promise<{ success: boolean; 
     // Log para debug em produção
     console.log('Iniciando envio de OTP para:', phoneNumber);
     console.log('API URL:', API_URL);
+    console.log('Ambiente:', import.meta.env.PROD ? 'Produção' : 'Desenvolvimento');
 
     // Verifica se o telefone já está cadastrado
     const exists = await checkPhoneExists(phoneNumber);
