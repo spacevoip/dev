@@ -1,21 +1,11 @@
 import { supabase } from '../lib/supabase';
 import { checkPhoneExists } from './userService';
-import { toast } from 'sonner';
 
-// Em produção usa a URL completa, em dev usa o proxy
-const API_URL = import.meta.env.PROD 
-  ? 'https://intermed.appinovavoip.com:5188/send-otp'
-  : '/send-otp';
-
-const API_TOKEN = '2dcd63c2-4fb1-4273-9e85-736eaaf4e0c5';  // Token fixo da API
+const API_URL = 'https://intermed.appinovavoip.com:5188/send-otp';
+const API_TOKEN = '2dcd63c2-4fb1-4273-9e85-736eaaf4e0c5';
 
 export const sendOTP = async (phoneNumber: string): Promise<{ success: boolean; message: string }> => {
   try {
-    // Log para debug em produção
-    console.log('Iniciando envio de OTP para:', phoneNumber);
-    console.log('API URL:', API_URL);
-    console.log('Ambiente:', import.meta.env.PROD ? 'Produção' : 'Desenvolvimento');
-
     // Verifica se o telefone já está cadastrado
     const exists = await checkPhoneExists(phoneNumber);
     if (exists) {
@@ -27,72 +17,26 @@ export const sendOTP = async (phoneNumber: string): Promise<{ success: boolean; 
 
     // Remove todos os caracteres não numéricos
     const formattedPhone = phoneNumber.replace(/\D/g, '');
-    console.log('Telefone formatado:', formattedPhone);
 
-    // Prepara o corpo da requisição
-    const requestBody = { phone_number: formattedPhone };
-    console.log('Request body:', requestBody);
-
-    // Tenta fazer a requisição usando fetch para melhor compatibilidade com o proxy
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_TOKEN}`,
-        'Accept': 'application/json'
+        'Authorization': `Bearer ${API_TOKEN}`
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify({ phone_number: formattedPhone })
     });
 
-    console.log('Response status:', response.status);
-    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+    const data = await response.json();
 
-    // Se a resposta não for ok, lança um erro com mais detalhes
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Error response:', errorText);
-      throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
+      throw new Error(data.message || 'Erro ao enviar código');
     }
 
-    // Tenta fazer o parse do JSON apenas se houver conteúdo
-    const text = await response.text();
-    console.log('Response text:', text);
-
-    if (!text) {
-      console.log('Resposta vazia recebida, considerando sucesso');
-      return { success: true, message: 'Código enviado com sucesso' };
-    }
-
-    try {
-      const data = JSON.parse(text);
-      if (!data) {
-        throw new Error('Empty JSON response');
-      }
-      return { success: true, message: data.message || 'Código enviado com sucesso' };
-    } catch (parseError) {
-      console.error('Failed to parse API response:', text, parseError);
-      // Se o status for 200, considera sucesso mesmo com erro de parse
-      if (response.status === 200) {
-        return { success: true, message: 'Código enviado com sucesso' };
-      }
-      return { success: false, message: 'Erro ao processar resposta do servidor' };
-    }
-
+    return { success: true, message: data.message };
   } catch (error) {
-    console.error('Erro geral no sendOTP:', error);
-    // Verifica se é um erro de rede ou CORS
-    if (error instanceof TypeError) {
-      if (error.message.includes('Failed to fetch')) {
-        return { 
-          success: false, 
-          message: 'Erro de conexão com o servidor. Por favor, verifique sua internet e tente novamente.'
-        };
-      }
-    }
-    return { 
-      success: false, 
-      message: 'Erro ao enviar código de verificação. Por favor, tente novamente em alguns instantes.'
-    };
+    console.error('Erro ao enviar OTP:', error);
+    return { success: false, message: 'Erro ao enviar código de verificação' };
   }
 };
 
