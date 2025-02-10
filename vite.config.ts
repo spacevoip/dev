@@ -27,6 +27,14 @@ export default defineConfig(({ mode }) => {
           secure: false,
           rewrite: (path) => path.replace(/^\/api/, ''),
         },
+        '/send-otp': {
+          target: 'https://intermed.appinovavoip.com:5188',
+          changeOrigin: true,
+          secure: false,
+          headers: {
+            'Authorization': 'Bearer 2dcd63c2-4fb1-4273-9e85-736eaaf4e0c5'
+          }
+        }
       },
     },
   };
