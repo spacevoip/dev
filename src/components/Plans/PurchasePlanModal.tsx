@@ -5,6 +5,7 @@ import { Plan } from '../../types/Plan';
 import { CurrentUser } from '../../hooks/useCurrentUser';
 import { usePayments } from '../../hooks/usePayments';
 import { toast } from 'sonner';
+import { formatCurrency } from '../../utils/format';
 
 interface PurchasePlanModalProps {
   isOpen: boolean;
@@ -213,10 +214,10 @@ const PurchasePlanModal: React.FC<PurchasePlanModalProps> = ({
                             </div>
                             <div className="text-right">
                               <div className="flex items-baseline gap-2">
-                                <span className="text-2xl font-bold text-gray-900">
+                                <span className="text-2xl font-bold text-white">
                                   {formatCurrency(planPrice)}
                                 </span>
-                                <span className="text-gray-500 text-sm">/Periodo</span>
+                                <span className="text-blue-100 text-sm">/Periodo</span>
                               </div>
                             </div>
                           </div>
