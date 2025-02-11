@@ -6,6 +6,15 @@ import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
+import { Label } from "../../components/ui/label";
+import { 
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -22,6 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
+import { toast } from 'sonner';
 
 interface Extension {
   id: string;
@@ -37,6 +47,7 @@ interface StatsCard {
   value: number;
   icon: React.ReactNode;
   color: string;
+  status: string | null;
 }
 
 const ITEMS_PER_PAGE = 20;
@@ -51,6 +62,14 @@ export function AdminExtensions() {
   const [extensionToDelete, setExtensionToDelete] = useState<Extension | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [extensionToEdit, setExtensionToEdit] = useState<Extension | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    nome: "",
+    callerid: "",
+    username: ""
+  });
   const backgroundUpdateRef = useRef<NodeJS.Timeout>();
   
   const { data: extensions, loading, error, refetch } = useAdminSupabaseQuery<Extension>({
@@ -177,13 +196,42 @@ export function AdminExtensions() {
     );
   };
 
-  // Filtrar extensões baseado na pesquisa
-  const filteredExtensions = stableExtensions?.filter(ext => 
-    ext.numero?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ext.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ext.callerid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ext.username?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Função para abrir o modal de edição
+  const handleEdit = (extension: Extension) => {
+    setExtensionToEdit(extension);
+    setEditForm({
+      nome: extension.nome || "",
+      callerid: extension.callerid || "",
+      username: extension.username || ""
+    });
+    setShowEditDialog(true);
+  };
+
+  // Função para salvar as alterações
+  const handleSaveEdit = async () => {
+    if (!extensionToEdit) return;
+
+    try {
+      const { error } = await supabase
+        .from('extensions')
+        .update({
+          nome: editForm.nome,
+          callerid: editForm.callerid,
+          username: editForm.username
+        })
+        .eq('id', extensionToEdit.id);
+
+      if (error) throw error;
+
+      await refetch();
+      setShowEditDialog(false);
+      setExtensionToEdit(null);
+      toast.success('Ramal atualizado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao atualizar ramal:', error);
+      toast.error('Erro ao atualizar ramal');
+    }
+  };
 
   // Calcular estatísticas
   const stats: StatsCard[] = [
@@ -191,37 +239,56 @@ export function AdminExtensions() {
       title: "Total de Ramais",
       value: stableExtensions?.length || 0,
       icon: <Users className="h-4 w-4" />,
-      color: "text-blue-600"
+      color: "text-blue-600",
+      status: null
     },
     {
       title: "Ramais Online",
       value: stableExtensions?.filter(ext => getExtensionStatus(ext.snystatus) === 'online').length || 0,
       icon: <Phone className="h-4 w-4" />,
-      color: "text-green-600"
+      color: "text-green-600",
+      status: 'online'
     },
     {
       title: "Em Chamada",
       value: stableExtensions?.filter(ext => getExtensionStatus(ext.snystatus) === 'incall').length || 0,
       icon: <PhoneCall className="h-4 w-4" />,
-      color: "text-yellow-600"
+      color: "text-yellow-600",
+      status: 'incall'
     },
     {
       title: "Offline",
       value: stableExtensions?.filter(ext => getExtensionStatus(ext.snystatus) === 'offline').length || 0,
       icon: <PhoneOff className="h-4 w-4" />,
-      color: "text-gray-600"
+      color: "text-gray-600",
+      status: 'offline'
     }
   ];
+
+  // Filtrar extensões baseado na pesquisa e status
+  const filteredExtensions = stableExtensions?.filter(ext => {
+    const matchesSearch = 
+      ext.numero?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ext.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ext.callerid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ext.username?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus = statusFilter 
+      ? getExtensionStatus(ext.snystatus) === statusFilter
+      : true;
+
+    return matchesSearch && matchesStatus;
+  });
 
   // Calcular páginas
   const totalPages = Math.ceil((filteredExtensions?.length || 0) / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedExtensions = filteredExtensions?.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-  // Reset página quando pesquisar
+  // Reset página quando mudar filtros
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, statusFilter]);
 
   // Loading inicial
   if (loading && stableExtensions.length === 0) {
@@ -261,6 +328,19 @@ export function AdminExtensions() {
             <h1 className="text-2xl font-bold text-gray-900">Extensões</h1>
             <p className="text-sm text-gray-500 mt-1">
               Última atualização: {lastUpdate.toLocaleTimeString()}
+              {statusFilter && (
+                <span className="ml-2">
+                  | Filtro: {stats.find(s => s.status === statusFilter)?.title}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setStatusFilter(null)}
+                    className="ml-2 h-6 px-2 text-xs"
+                  >
+                    Limpar
+                  </Button>
+                </span>
+              )}
             </p>
           </div>
           <Button
@@ -288,7 +368,13 @@ export function AdminExtensions() {
       {/* Cards de Estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, index) => (
-          <Card key={index} className="border border-gray-200">
+          <Card 
+            key={index} 
+            className={`border border-gray-200 cursor-pointer transition-all hover:shadow-md ${
+              statusFilter === stat.status ? 'ring-2 ring-blue-500' : ''
+            }`}
+            onClick={() => setStatusFilter(stat.status)}
+          >
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
@@ -379,7 +465,7 @@ export function AdminExtensions() {
                           variant="ghost"
                           size="sm"
                           className="h-8 w-8 p-0"
-                          onClick={() => {/* Função de editar */}}
+                          onClick={() => handleEdit(extension)}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -478,6 +564,55 @@ export function AdminExtensions() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal de Edição */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Ramal {extensionToEdit?.numero}</DialogTitle>
+            <DialogDescription>
+              Atualize as informações do ramal. O número do ramal não pode ser alterado.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="nome">Nome do Agente</Label>
+              <Input
+                id="nome"
+                value={editForm.nome}
+                onChange={(e) => setEditForm(prev => ({ ...prev, nome: e.target.value }))}
+                placeholder="Nome do agente"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="callerid">Caller ID</Label>
+              <Input
+                id="callerid"
+                value={editForm.callerid}
+                onChange={(e) => setEditForm(prev => ({ ...prev, callerid: e.target.value }))}
+                placeholder="Caller ID"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="username">Cliente</Label>
+              <Input
+                id="username"
+                value={editForm.username}
+                onChange={(e) => setEditForm(prev => ({ ...prev, username: e.target.value }))}
+                placeholder="Nome do cliente"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveEdit}>
+              Salvar Alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

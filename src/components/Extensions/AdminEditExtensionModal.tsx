@@ -3,6 +3,8 @@ import { Modal } from '../Common/Modal';
 import { AddExtensionForm } from './AddExtensionForm';
 import { supabase } from '../../lib/supabase';
 import { Extension } from '../../types/extension';
+import { sanitizeCallerId, isValidCallerId } from '../../utils/callerIdValidator';
+import { toast } from 'sonner';
 
 interface AdminEditExtensionModalProps {
   isOpen: boolean;
@@ -27,6 +29,13 @@ export const AdminEditExtensionModal: React.FC<AdminEditExtensionModalProps> = (
   }) => {
     setLoading(true);
     try {
+      // Sanitiza e valida o callerID
+      const sanitizedCallerId = sanitizeCallerId(data.callerId);
+      if (!isValidCallerId(sanitizedCallerId)) {
+        toast.error('O Caller ID deve conter apenas números');
+        return;
+      }
+
       // Verifica se o número foi alterado e se já existe
       if (data.extension !== extension.numero) {
         const { data: existingExtension } = await supabase
@@ -37,7 +46,7 @@ export const AdminEditExtensionModal: React.FC<AdminEditExtensionModalProps> = (
           .single();
 
         if (existingExtension) {
-          alert('Este número de ramal já está em uso.');
+          toast.error('Este número de ramal já está em uso.');
           return;
         }
       }
@@ -48,7 +57,7 @@ export const AdminEditExtensionModal: React.FC<AdminEditExtensionModalProps> = (
         .update({
           nome: data.name,
           numero: data.extension,
-          callerid: data.callerId,
+          callerid: sanitizedCallerId,
           senha: data.senha,
           contexto: 'from-internal',
           accountid: extension.accountid // Mantém o accountid original
@@ -59,9 +68,10 @@ export const AdminEditExtensionModal: React.FC<AdminEditExtensionModalProps> = (
 
       onSuccess();
       onClose();
+      toast.success('Ramal atualizado com sucesso');
     } catch (error) {
       console.error('Erro ao atualizar ramal:', error);
-      alert('Erro ao atualizar ramal. Por favor, tente novamente.');
+      toast.error('Erro ao atualizar ramal. Por favor, tente novamente.');
     } finally {
       setLoading(false);
     }

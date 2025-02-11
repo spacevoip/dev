@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Ban } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
+import { sanitizeCallerId, isValidCallerId } from '../../utils/callerIdValidator';
+import { toast } from 'sonner';
 
 interface CallerIDBlock {
   id: string;
@@ -49,7 +51,16 @@ export const AdminCallerIDBlock = () => {
 
   const handleSave = async () => {
     setLoading(true);
-    const numbers = newCallerIDs.split(',').map(n => n.trim()).filter(n => n);
+    const numbers = newCallerIDs
+      .split(',')
+      .map(n => sanitizeCallerId(n.trim()))
+      .filter(n => n && isValidCallerId(n));
+
+    if (numbers.length === 0) {
+      toast.error('Insira pelo menos um número válido');
+      setLoading(false);
+      return;
+    }
 
     try {
       const { error } = await supabase
@@ -61,8 +72,10 @@ export const AdminCallerIDBlock = () => {
       setIsModalOpen(false);
       setNewCallerIDs('');
       await fetchCallerIDs();
+      toast.success('Números adicionados com sucesso');
     } catch (error) {
       console.error('Error saving caller IDs:', error);
+      toast.error('Erro ao salvar números');
     } finally {
       setLoading(false);
     }
@@ -141,12 +154,20 @@ export const AdminCallerIDBlock = () => {
               </label>
               <textarea
                 value={newCallerIDs}
-                onChange={(e) => setNewCallerIDs(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  const numbers = value.split(',').map(n => n.trim());
+                  const hasInvalid = numbers.some(n => n && !isValidCallerId(n));
+                  if (hasInvalid) {
+                    toast.error('Apenas números são permitidos');
+                  }
+                  setNewCallerIDs(value);
+                }}
                 className="w-full px-4 py-3 text-base border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all resize-none"
                 rows={4}
                 placeholder="Digite os números separados por vírgula..."
               />
-              <p className="mt-2 text-sm text-gray-500">Use vírgula (,) para separar os números</p>
+              <p className="mt-2 text-sm text-gray-500">Use vírgula (,) para separar os números. Apenas números são permitidos.</p>
               
               {newCallerIDs && (
                 <div className="mt-4 flex flex-wrap gap-2">

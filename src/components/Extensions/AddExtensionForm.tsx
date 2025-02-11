@@ -4,6 +4,7 @@ import { PasswordInput } from './PasswordInput';
 import { RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
+import { sanitizeCallerId, isValidCallerId } from '../../utils/callerIdValidator';
 
 interface AddExtensionFormProps {
   onSubmit: (data: {
@@ -130,13 +131,19 @@ export const AddExtensionForm: React.FC<AddExtensionFormProps> = ({
         </label>
         <input
           type="text"
-          pattern="[0-9]*"
           value={formData.callerId}
-          onChange={(e) => setFormData(prev => ({ ...prev, callerId: e.target.value }))}
+          onChange={(e) => {
+            const sanitized = sanitizeCallerId(e.target.value);
+            if (sanitized !== e.target.value) {
+              toast.error('Apenas números são permitidos no Caller ID');
+            }
+            setFormData(prev => ({ ...prev, callerId: sanitized }));
+          }}
           placeholder="Ex: 11999999999"
           className="block w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           required
         />
+        <p className="mt-1 text-sm text-gray-500">Apenas números são permitidos</p>
       </div>
 
       <PasswordInput
